@@ -1468,8 +1468,6 @@ renderReports();
 renderAllInvoices();
 </script>
 <script>
-const API = "https://bizledger-erp-production.up.railway.app";
-
 // Example: fetch dashboard data
 fetch(API + "/dashboard")
   .then(res => res.json())
@@ -1483,6 +1481,7 @@ fetch(API + "/dashboard")
     document.querySelectorAll("h3")[3].innerText = "₹" + data.gst;
   })
   .catch(err => console.error("Error connecting backend:", err));
+const API_BASE = 'https://bizledger-erp-production.up.railway.app/api';
 </script>
 </body>
 </html>
