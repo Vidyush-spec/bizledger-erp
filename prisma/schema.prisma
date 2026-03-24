@@ -1,0 +1,412 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String     @id @default(uuid())
+  name      String
+  gstin     String     @unique
+  pan       String
+  address   String
+  city      String
+  state     String
+  pincode   String
+  phone     String?
+  email     String?
+  logoUrl   String?
+  fyStart   Int        @default(4)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  accounts  Account[]
+  employees Employee[]
+  invoices  Invoice[]
+  products  Product[]
+  users     User[]
+}
+
+model User {
+  id                 String         @id @default(uuid())
+  companyId          String
+  name               String
+  email              String         @unique
+  passwordHash       String
+  role               Role           @default(VIEWER)
+  isActive           Boolean        @default(true)
+  failedLogins       Int            @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  lastLoginIp        String?
+  mustChangePassword Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+  auditLogs          AuditLog[]
+  invoices           Invoice[]
+  journalEntries     JournalEntry[]
+  refreshTokens      RefreshToken[]
+  company            Company        @relation(fields: [companyId], references: [id])
+
+  @@index([email])
+  @@index([companyId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  tableName String
+  recordId  String
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tableName, recordId])
+  @@index([createdAt])
+}
+
+model Account {
+  id          String        @id @default(uuid())
+  companyId   String
+  code        String
+  name        String
+  group       AccountGroup
+  subtype     String
+  side        DrCr
+  balance     Decimal       @default(0) @db.Decimal(15, 2)
+  isSystem    Boolean       @default(false)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  company     Company       @relation(fields: [companyId], references: [id])
+  creditLines JournalLine[] @relation("CreditAccount")
+  debitLines  JournalLine[] @relation("DebitAccount")
+
+  @@unique([companyId, code])
+  @@index([companyId, group])
+}
+
+model JournalEntry {
+  id        String        @id @default(uuid())
+  companyId String
+  entryNo   String
+  date      DateTime
+  narration String
+  status    EntryStatus   @default(DRAFT)
+  reference String?
+  createdBy String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+  user      User          @relation(fields: [createdBy], references: [id])
+  lines     JournalLine[]
+
+  @@unique([companyId, entryNo])
+  @@index([companyId, date])
+}
+
+model JournalLine {
+  id              String       @id @default(uuid())
+  journalEntryId  String
+  debitAccountId  String?
+  creditAccountId String?
+  amount          Decimal      @db.Decimal(15, 2)
+  description     String?
+  creditAccount   Account?     @relation("CreditAccount", fields: [creditAccountId], references: [id])
+  debitAccount    Account?     @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  journalEntry    JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+
+  @@index([journalEntryId])
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  companyId     String
+  invoiceNo     String
+  invoiceDate   DateTime
+  dueDate       DateTime?
+  customerName  String
+  customerGstin String?
+  customerAddr  String?
+  placeOfSupply String
+  subtotal      Decimal       @db.Decimal(15, 2)
+  cgst          Decimal       @default(0) @db.Decimal(15, 2)
+  sgst          Decimal       @default(0) @db.Decimal(15, 2)
+  igst          Decimal       @default(0) @db.Decimal(15, 2)
+  grandTotal    Decimal       @db.Decimal(15, 2)
+  roundOff      Decimal       @default(0) @db.Decimal(15, 2)
+  status        InvoiceStatus @default(DRAFT)
+  notes         String?
+  terms         String?
+  pdfUrl        String?
+  createdBy     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+  company       Company       @relation(fields: [companyId], references: [id])
+  user          User          @relation(fields: [createdBy], references: [id])
+  items         InvoiceItem[]
+
+  @@unique([companyId, invoiceNo])
+  @@index([companyId, invoiceDate])
+  @@index([companyId, status])
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  hsnCode     String?
+  quantity    Decimal @db.Decimal(10, 3)
+  rate        Decimal @db.Decimal(15, 2)
+  taxableAmt  Decimal @db.Decimal(15, 2)
+  gstRate     Decimal @db.Decimal(5, 2)
+  taxAmt      Decimal @db.Decimal(15, 2)
+  total       Decimal @db.Decimal(15, 2)
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model ITCEntry {
+  id            String    @id @default(uuid())
+  companyId     String
+  date          DateTime
+  supplierName  String
+  supplierGstin String
+  invoiceNo     String
+  taxableAmt    Decimal   @db.Decimal(15, 2)
+  cgst          Decimal   @default(0) @db.Decimal(15, 2)
+  sgst          Decimal   @default(0) @db.Decimal(15, 2)
+  igst          Decimal   @default(0) @db.Decimal(15, 2)
+  eligibility   ITCStatus @default(ELIGIBLE)
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  @@index([companyId, date])
+}
+
+model Product {
+  id           String              @id @default(uuid())
+  companyId    String
+  sku          String
+  name         String
+  category     String
+  hsnCode      String?
+  unit         String              @default("Pcs")
+  currentStock Decimal             @default(0) @db.Decimal(10, 3)
+  reorderLevel Decimal             @default(10) @db.Decimal(10, 3)
+  maxStock     Decimal             @default(500) @db.Decimal(10, 3)
+  costPrice    Decimal             @db.Decimal(15, 2)
+  sellingPrice Decimal?            @db.Decimal(15, 2)
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  deletedAt    DateTime?
+  company      Company             @relation(fields: [companyId], references: [id])
+  poItems      PurchaseOrderItem[]
+  movements    StockMovement[]
+
+  @@unique([companyId, sku])
+  @@index([companyId, category])
+}
+
+model StockMovement {
+  id           String       @id @default(uuid())
+  productId    String
+  type         MovementType
+  quantity     Decimal      @db.Decimal(10, 3)
+  balanceAfter Decimal      @db.Decimal(10, 3)
+  reference    String?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@index([productId, createdAt])
+}
+
+model PurchaseOrder {
+  id           String              @id @default(uuid())
+  companyId    String
+  poNo         String
+  vendorName   String
+  vendorGstin  String?
+  orderDate    DateTime
+  expectedDate DateTime?
+  status       POStatus            @default(ORDERED)
+  totalAmount  Decimal             @db.Decimal(15, 2)
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  items        PurchaseOrderItem[]
+
+  @@unique([companyId, poNo])
+}
+
+model PurchaseOrderItem {
+  id          String        @id @default(uuid())
+  poId        String
+  productId   String
+  quantity    Decimal       @db.Decimal(10, 3)
+  rate        Decimal       @db.Decimal(15, 2)
+  receivedQty Decimal       @default(0) @db.Decimal(10, 3)
+  po          PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product     Product       @relation(fields: [productId], references: [id])
+}
+
+model Employee {
+  id                   String           @id @default(uuid())
+  companyId            String
+  employeeId           String
+  name                 String
+  email                String?
+  phone                String?
+  department           String
+  designation          String
+  dateOfJoining        DateTime
+  employmentType       String           @default("Full-time")
+  isActive             Boolean          @default(true)
+  basicSalary          Int
+  hra                  Int              @default(0)
+  da                   Int              @default(0)
+  otherAllowances      Int              @default(0)
+  panEncrypted         String?
+  bankAccountEncrypted String?
+  ifsc                 String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  deletedAt            DateTime?
+  company              Company          @relation(fields: [companyId], references: [id])
+  payrollRuns          PayrollRunItem[]
+
+  @@unique([companyId, employeeId])
+  @@index([companyId, department])
+}
+
+model PayrollRun {
+  id          String           @id @default(uuid())
+  companyId   String
+  month       Int
+  year        Int
+  paymentDate DateTime?
+  status      PayrollStatus    @default(DRAFT)
+  totalGross  Int
+  totalNet    Int
+  totalPF     Int
+  totalESI    Int
+  totalPT     Int
+  processedAt DateTime?
+  createdAt   DateTime         @default(now())
+  items       PayrollRunItem[]
+
+  @@unique([companyId, month, year])
+}
+
+model PayrollRunItem {
+  id              String     @id @default(uuid())
+  payrollRunId    String
+  employeeId      String
+  basicSalary     Int
+  hra             Int
+  da              Int
+  otherAllowances Int
+  grossSalary     Int
+  pfEmployee      Int
+  pfEmployer      Int
+  esiEmployee     Int
+  esiEmployer     Int
+  professionalTax Int
+  tds             Int        @default(0)
+  netSalary       Int
+  payslipPdfUrl   String?
+  employee        Employee   @relation(fields: [employeeId], references: [id])
+  payrollRun      PayrollRun @relation(fields: [payrollRunId], references: [id])
+
+  @@unique([payrollRunId, employeeId])
+  @@index([employeeId])
+}
+
+enum Role {
+  ADMIN
+  ACCOUNTANT
+  HR_MANAGER
+  INVENTORY_MANAGER
+  VIEWER
+}
+
+enum AccountGroup {
+  ASSETS
+  LIABILITIES
+  EQUITY
+  INCOME
+  EXPENSES
+}
+
+enum DrCr {
+  DR
+  CR
+}
+
+enum EntryStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  POSTED
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
+}
+
+enum ITCStatus {
+  ELIGIBLE
+  PARTIAL
+  BLOCKED
+}
+
+enum MovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+  RETURN_IN
+  RETURN_OUT
+}
+
+enum POStatus {
+  ORDERED
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+enum PayrollStatus {
+  DRAFT
+  PROCESSED
+  PAID
+}

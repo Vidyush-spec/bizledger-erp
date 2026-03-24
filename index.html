@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BizLedger ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--surface:#181b24;--surface2:#1e2130;--border:#2a2f42;
+  --accent:#4f7cff;--accent2:#00d2a0;--accent3:#ff7c4f;--accent4:#c77dff;
+  --text:#eef0f8;--muted:#7b82a0;--danger:#ff4f6e;--warn:#f5c518;
+  --serif:'DM Serif Display',serif;--sans:'DM Sans',sans-serif;--r:10px;
+  --sidebar-w:230px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SHELL ── */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s}
+.logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.logo-name{font-family:var(--serif);font-size:22px;cursor:pointer}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+.nav-section{padding:14px 10px 4px}
+.nav-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:0 8px;margin-bottom:4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .14s;border:1px solid transparent;margin-bottom:2px;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--surface2);color:var(--text);border-color:var(--border);font-weight:500}
+.nav-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--surface2);transition:background .14s}
+.nav-item.active .nav-icon{background:var(--accent)}
+.badge{margin-left:auto;background:var(--danger);color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:20px}
+.sidebar-footer{margin-top:auto;padding:14px 10px;border-top:1px solid var(--border)}
+.user-row{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;background:var(--surface2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent4));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+.user-name{font-size:12.5px;font-weight:500}.user-role{font-size:10px;color:var(--muted)}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{position:sticky;top:0;background:rgba(15,17,23,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 26px;height:56px;display:flex;align-items:center;justify-content:space-between;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.page-title{font-family:var(--serif);font-size:20px}
+.breadcrumb{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.breadcrumb span{cursor:pointer;transition:color .14s}.breadcrumb span:hover{color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:7px;font-size:12.5px;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:6px;transition:all .14s;white-space:nowrap}
+.btn:hover{color:var(--text);border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.btn.primary:hover{background:#6b91ff}
+.btn.success{background:var(--accent2);color:#0a1a14;border-color:var(--accent2);font-weight:500}
+.btn.warn{background:var(--warn);color:#1a1200;border-color:var(--warn);font-weight:500}
+.btn.danger2{background:var(--danger);color:#fff;border-color:var(--danger);font-weight:500}
+
+/* ── CONTENT ── */
+.content{padding:26px;flex:1}
+.page{display:none}.page.active{display:block;animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:4px;width:fit-content;margin-bottom:22px;flex-wrap:wrap}
+.tab{padding:6px 16px;border-radius:6px;font-size:12.5px;cursor:pointer;border:none;color:var(--muted);background:none;font-family:var(--sans);transition:all .14s}
+.tab.active{background:var(--surface2);color:var(--text);font-weight:500;border:1px solid var(--border)}
+.tab:hover:not(.active){color:var(--text)}
+.panel{display:none}.panel.active{display:block;animation:fadeIn .2s ease}
+
+/* ── KPI ── */
+.kpi-grid{display:grid;gap:14px;margin-bottom:22px}
+.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s;cursor:default}
+.kpi:hover{border-color:var(--accent)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.blue::before{background:var(--accent)}.kpi.green::before{background:var(--accent2)}
+.kpi.orange::before{background:var(--accent3)}.kpi.red::before{background:var(--danger)}
+.kpi.purple::before{background:var(--accent4)}.kpi.yellow::before{background:var(--warn)}
+.kpi-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kpi-val{font-family:var(--serif);font-size:26px;line-height:1}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi-change{font-size:12px;margin-top:5px}
+.up{color:var(--accent2)}.down{color:var(--danger)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:500}
+.card-action{font-size:12px;color:var(--accent);cursor:pointer}
+
+/* ── FORMS ── */
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:16px}
+.form-title{font-size:14px;font-weight:500;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.fi{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-size:13px;font-family:var(--sans);outline:none;transition:border-color .14s;width:100%}
+.fi:focus{border-color:var(--accent)}
+.fi option{background:var(--surface2)}
+.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.fgrid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
+
+/* ── TABLES ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--surface2)}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl th.c,.tbl td.c{text-align:center}
+
+/* ── TAGS ── */
+.tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500}
+.t-green{background:rgba(0,210,160,.15);color:var(--accent2)}
+.t-red{background:rgba(255,79,110,.15);color:var(--danger)}
+.t-blue{background:rgba(79,124,255,.15);color:var(--accent)}
+.t-orange{background:rgba(255,124,79,.15);color:var(--accent3)}
+.t-muted{background:rgba(123,130,160,.15);color:var(--muted)}
+.t-yellow{background:rgba(245,197,24,.15);color:var(--warn)}
+
+/* ── FILTERS ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.fi-sm{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:7px;font-size:12.5px;font-family:var(--sans);outline:none;transition:border-color .14s}
+.fi-sm:focus{border-color:var(--accent)}
+.fi-sm option{background:var(--surface2)}
+
+/* ── PAYROLL SPECIFIC ── */
+.emp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:14px}
+.emp-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.emp-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.emp-name{font-size:14px;font-weight:500;margin-bottom:2px}
+.emp-dept{font-size:11px;color:var(--muted);margin-bottom:6px}
+.emp-salary{font-family:var(--serif);font-size:18px;color:var(--accent2)}
+.emp-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+
+/* payslip */
+.payslip{background:#fff;color:#1a1a2e;padding:36px;font-family:var(--sans);font-size:13px;border-radius:10px;max-width:680px;margin:0 auto}
+.ps-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid #e8ecff;margin-bottom:20px}
+.ps-co{font-family:var(--serif);font-size:20px;color:#1a1a2e}
+.ps-badge{background:#f0f4ff;border:1px solid #c0d0ff;color:#2a4abf;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:600}
+.ps-emp-info{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;margin-bottom:20px;background:#f8faff;padding:14px;border-radius:8px}
+.ps-field{font-size:12px;color:#666}
+.ps-field strong{color:#1a1a2e}
+.ps-tables{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.ps-table{width:100%;border-collapse:collapse}
+.ps-table th{background:#f0f4ff;padding:7px 10px;font-size:11px;color:#2a4abf;text-align:left;text-transform:uppercase;letter-spacing:.05em}
+.ps-table th:last-child{text-align:right}
+.ps-table td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px}
+.ps-table td:last-child{text-align:right;font-weight:500}
+.ps-net{background:#f0f4ff;border-radius:8px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.ps-net-lbl{font-size:12px;color:#666}
+.ps-net-val{font-family:var(--serif);font-size:24px;color:#2a4abf;font-weight:700}
+.ps-footer{text-align:center;font-size:10px;color:#aaa;margin-top:16px;border-top:1px solid #eee;padding-top:12px}
+
+/* progress bar */
+.prog-wrap{margin-bottom:12px}
+.prog-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px}
+.prog{height:5px;background:var(--surface2);border-radius:10px;overflow:hidden}
+.prog-fill{height:100%;border-radius:10px}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:580px;max-height:90vh;overflow-y:auto;padding:28px}
+.modal-white{background:#fff;border-radius:14px;width:700px;max-height:90vh;overflow-y:auto;padding:0}
+.modal-title{font-family:var(--serif);font-size:20px;margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.modal-footer-white{display:flex;gap:10px;justify-content:flex-end;padding:16px 36px;border-top:1px solid #eee;background:#f8faff;border-radius:0 0 14px 14px}
+.mtn{padding:8px 18px;border-radius:7px;font-size:13px;cursor:pointer;font-family:var(--sans);font-weight:500;border:1px solid}
+.mtn-close{background:#f0f0f0;color:#333;border-color:#ddd}
+.mtn-print{background:#4f7cff;color:#fff;border-color:#4f7cff}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px;transition:color .12s}
+.del-btn:hover{color:var(--danger)}
+
+/* dashboard-specific */
+.bar-chart-wrap{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:8px}
+.bar-grp{display:flex;flex-direction:column;align-items:center;flex:1;gap:4px}
+.bar-pair{display:flex;gap:3px;align-items:flex-end;height:100px}
+.bar{width:12px;border-radius:4px 4px 0 0;transition:opacity .2s;cursor:pointer}
+.bar:hover{opacity:.7}
+.bar.inc{background:var(--accent)}.bar.exp{background:var(--surface2);border:1px solid var(--border)}
+.bar-lbl{font-size:9px;color:var(--muted)}
+.chart-legend{display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--muted)}
+.ldot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px}
+
+/* invoice row */
+.list-row{display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);gap:14px;cursor:pointer;transition:background .12s;font-size:13px}
+.list-row:last-child{border-bottom:none}
+.list-row:hover{background:var(--surface2)}
+
+/* stock card */
+.stock-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.stock-card:hover{border-color:var(--accent)}
+.stock-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
+.stock-card.ok::after{background:var(--accent2)}.stock-card.low::after{background:var(--warn)}
+.stock-card.critical::after{background:var(--danger)}.stock-card.out::after{background:var(--muted)}
+
+/* toast */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--accent2);color:#0a1a14;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateY(80px);opacity:0;transition:all .3s;z-index:9999}
+.toast.show{transform:translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-name" onclick="nav('dashboard')">BizLedger</div>
+    <div class="logo-sub">ERP Platform · v1.0</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-lbl">Overview</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="nav('dashboard')">
+      <div class="nav-icon">📊</div>Dashboard
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-lbl">Modules</div>
+    <div class="nav-item" id="nav-accounting" onclick="nav('accounting')">
+      <div class="nav-icon">📒</div>Accounting
+    </div>
+    <div class="nav-item" id="nav-gst" onclick="nav('gst')">
+      <div class="nav-icon">🧾</div>GST Compliance
+    </div>
+    <div class="nav-item" id="nav-inventory" onclick="nav('inventory')">
+      <div class="nav-icon">📦</div>Inventory
+      <span class="badge" id="inv-badge">3</span>
+    </div>
+    <div class="nav-item" id="nav-payroll" onclick="nav('payroll')">
+      <div class="nav-icon">👥</div>Payroll
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-lbl">Finance</div>
+    <div class="nav-item" id="nav-invoices" onclick="nav('invoices')">
+      <div class="nav-icon">📄</div>Invoices
+    </div>
+    <div class="nav-item" id="nav-reports" onclick="nav('reports')">
+      <div class="nav-icon">📈</div>Reports
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-lbl">System</div>
+    <div class="nav-item" id="nav-settings" onclick="nav('settings')">
+      <div class="nav-icon">⚙️</div>Settings
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">VK</div>
+      <div><div class="user-name">Vidyush K.</div><div class="user-role">Administrator</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="breadcrumb" id="breadcrumb"></div>
+    </div>
+    <div class="topbar-right" id="topbarActions">
+      <button class="btn">📅 Mar 2026</button>
+      <button class="btn">🔔 Alerts</button>
+      <button class="btn primary" onclick="nav('gst');setTimeout(()=>showGstTab('create'),100)">+ New Invoice</button>
+    </div>
+  </header>
+
+  <div class="content">
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="kpi-grid g4" style="margin-bottom:22px">
+      <div class="kpi blue"><div class="kpi-lbl">Cash Balance</div><div class="kpi-val">₹4,82,600</div><div class="kpi-change up">↑ 12.4% vs last month</div></div>
+      <div class="kpi green"><div class="kpi-lbl">Revenue (Mar)</div><div class="kpi-val">₹1,24,500</div><div class="kpi-change up">↑ 8.1% vs Feb</div></div>
+      <div class="kpi orange"><div class="kpi-lbl">Expenses (Mar)</div><div class="kpi-val">₹63,200</div><div class="kpi-change down">↑ 3.2% vs Feb</div></div>
+      <div class="kpi purple"><div class="kpi-lbl">GST Payable</div><div class="kpi-val">₹18,340</div><div class="kpi-sub">Due: 20 Apr</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Revenue vs Expenses</div><div class="card-action" onclick="nav('reports')">View report →</div></div>
+        <div class="bar-chart-wrap" id="dashChart"></div>
+        <div class="chart-legend"><span><span class="ldot" style="background:var(--accent)"></span>Revenue</span><span><span class="ldot" style="background:var(--surface2);border:1px solid var(--border)"></span>Expenses</span></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Pending Invoices</div><div class="card-action" onclick="nav('invoices')">View all →</div></div>
+        <div id="dashInvoices"></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">🚨 Stock Alerts</div><div class="card-action" onclick="nav('inventory')">Manage →</div></div>
+        <div id="dashStockAlerts"></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">GST Summary</div><div class="card-action" onclick="nav('gst')">Details →</div></div>
+        <div id="dashGST"></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Payroll (Mar)</div><div class="card-action" onclick="nav('payroll')">Process →</div></div>
+        <div id="dashPayroll"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ACCOUNTING ══════════ -->
+  <div class="page" id="page-accounting">
+    <div class="tabs">
+      <button class="tab active" onclick="showAccTab('coa',this)">Chart of Accounts</button>
+      <button class="tab" onclick="showAccTab('journal',this)">Journal Entries</button>
+      <button class="tab" onclick="showAccTab('trial',this)">Trial Balance</button>
+      <button class="tab" onclick="showAccTab('ledger',this)">Ledger</button>
+    </div>
+    <div class="panel active" id="acc-coa">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:500">Chart of Accounts <span style="color:var(--muted);font-size:12px;font-weight:400">· 18 accounts</span></div>
+        <button class="btn primary" onclick="toast('Add account form coming in next iteration!')">+ Add Account</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="coaGrid"></div>
+    </div>
+    <div class="panel" id="acc-journal">
+      <!-- New JE form -->
+      <div id="jeFormWrap" style="display:none;margin-bottom:20px">
+        <div class="form-card">
+          <div class="form-title">New Journal Entry</div>
+          <div class="fgrid3" style="margin-bottom:14px">
+            <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="jeDate" value="2026-03-23"></div>
+            <div class="fg"><label class="fl">Reference</label><input class="fi" id="jeRef" readonly style="color:var(--muted)"></div>
+            <div class="fg"><label class="fl">Narration</label><input class="fi" id="jeNarr" placeholder="Transaction description"></div>
+          </div>
+          <table class="tbl" style="margin-bottom:10px">
+            <thead><tr><th style="width:28px">#</th><th>Account</th><th>Description</th><th class="r" style="width:130px">Debit (₹)</th><th class="r" style="width:130px">Credit (₹)</th><th style="width:30px"></th></tr></thead>
+            <tbody id="jeLines"></tbody>
+          </table>
+          <button class="btn" style="width:100%;justify-content:center;margin-bottom:14px" onclick="addJELine()">+ Add Line</button>
+          <div style="display:flex;justify-content:flex-end;gap:20px;align-items:center;border-top:1px solid var(--border);padding-top:12px">
+            <div style="font-size:13px">Dr: <strong id="jeTotDr">₹0</strong> &nbsp; Cr: <strong id="jeTotCr">₹0</strong> &nbsp; Diff: <strong id="jeDiff" class="down">₹0</strong></div>
+            <button class="btn" onclick="document.getElementById('jeFormWrap').style.display='none'">Cancel</button>
+            <button class="btn success" onclick="postJE()">✓ Post Entry</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="jeListCard"></div>
+    </div>
+    <div class="panel" id="acc-trial">
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+        <div><div style="font-size:14px;font-weight:500">Trial Balance</div><div style="font-size:12px;color:var(--muted);margin-top:2px">As of 23 March 2026</div></div>
+        <button class="btn primary">📤 Export PDF</button>
+      </div>
+      <div class="card"><table class="tbl" id="tbTbl"></table></div>
+    </div>
+    <div class="panel" id="acc-ledger">
+      <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
+        <div style="font-size:14px;font-weight:500">Ledger</div>
+        <select class="fi-sm" id="ledSel" onchange="renderLedger()" style="width:260px"></select>
+      </div>
+      <div class="card" id="ledgerCard"><div style="padding:40px;text-align:center;color:var(--muted)">Select an account above</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ GST ══════════ -->
+  <div class="page" id="page-gst">
+    <div class="tabs">
+      <button class="tab active" onclick="showGstTab('overview',this)">Overview</button>
+      <button class="tab" onclick="showGstTab('create',this)">Create Invoice</button>
+      <button class="tab" onclick="showGstTab('invoices',this)">All Invoices</button>
+      <button class="tab" onclick="showGstTab('returns',this)">GST Returns</button>
+      <button class="tab" onclick="showGstTab('itc',this)">ITC Tracker</button>
+    </div>
+    <div class="panel active" id="gst-overview" style="display:block">
+      <div class="kpi-grid g4">
+        <div class="kpi green"><div class="kpi-lbl">Output GST (Mar)</div><div class="kpi-val">₹22,410</div><div class="kpi-sub">Collected</div></div>
+        <div class="kpi blue"><div class="kpi-lbl">Input Tax Credit</div><div class="kpi-val">₹4,070</div><div class="kpi-sub">Available</div></div>
+        <div class="kpi orange"><div class="kpi-lbl">Net GST Payable</div><div class="kpi-val">₹18,340</div><div class="kpi-sub">Due 20 Apr</div></div>
+        <div class="kpi red"><div class="kpi-lbl">Pending Invoices</div><div class="kpi-val">3</div><div class="kpi-sub">Awaiting payment</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Tax Breakup — March 2026</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">CGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent)">₹11,205</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">SGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent4)">₹11,205</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">IGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent3)">₹0</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">ITC</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent2)">₹4,070</div></div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:14px">
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output Tax</span><span style="font-weight:600">₹22,410</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Less: ITC</span><span style="font-weight:600;color:var(--accent2)">−₹4,070</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700"><span>Net Payable</span><span style="color:var(--accent3)">₹18,340</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Filing Status</div>
+          <div style="display:flex;flex-direction:column;gap:10px" id="gstFilingStatus"></div>
+          <div style="margin-top:12px;background:rgba(255,79,110,.07);border:1px solid rgba(255,79,110,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--danger)">⚠️ GSTR-3B due in <strong>28 days</strong>. File before 20 April to avoid interest.</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="gst-create">
+      <div class="form-card">
+        <div class="form-title">📄 Invoice Details</div>
+        <div class="fgrid4">
+          <div class="fg"><label class="fl">Invoice No.</label><input class="fi" value="INV-0010" readonly style="color:var(--muted)"></div>
+          <div class="fg"><label class="fl">Invoice Date</label><input class="fi" type="date" value="2026-03-23"></div>
+          <div class="fg"><label class="fl">Due Date</label><input class="fi" type="date" value="2026-04-22"></div>
+          <div class="fg"><label class="fl">Place of Supply</label><select class="fi" id="gstBuyerState" onchange="gstCalc()"><option value="WB">West Bengal</option><option value="MH">Maharashtra</option><option value="DL">Delhi</option><option value="KA">Karnataka</option></select></div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="form-title">👤 Customer</div>
+        <div class="fgrid3">
+          <div class="fg"><label class="fl">Name</label><input class="fi" id="gstBuyerName" placeholder="Customer name"></div>
+          <div class="fg"><label class="fl">GSTIN</label><input class="fi" placeholder="GSTIN" style="font-family:monospace"></div>
+          <div class="fg"><label class="fl">Address</label><input class="fi" placeholder="Billing address"></div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="form-title">🛒 Items</div>
+        <table class="tbl" style="margin-bottom:10px">
+          <thead><tr><th>#</th><th>Description</th><th style="width:80px">HSN</th><th style="width:60px">Qty</th><th style="width:100px">Rate (₹)</th><th style="width:55px">GST%</th><th class="r" style="width:110px">Taxable</th><th class="r" style="width:110px">Total</th><th style="width:28px"></th></tr></thead>
+          <tbody id="gstItems"></tbody>
+        </table>
+        <button class="btn" style="width:100%;justify-content:center;margin-bottom:16px" onclick="addGstItem()">+ Add Item</button>
+        <div style="display:flex;justify-content:flex-end">
+          <div style="width:300px;background:var(--surface2);border-radius:var(--r);padding:16px">
+            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Subtotal</span><span id="gstSubtotal">₹0.00</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)" id="cgstRow"><span style="color:var(--muted)">CGST</span><span id="gstCGST">₹0.00</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)" id="sgstRow"><span style="color:var(--muted)">SGST</span><span id="gstSGST">₹0.00</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);display:none" id="igstRow"><span style="color:var(--muted)">IGST</span><span id="gstIGST">₹0.00</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:16px;font-weight:700"><span>Grand Total</span><span style="color:var(--accent2)" id="gstGrand">₹0.00</span></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+          <button class="btn">💾 Save Draft</button>
+          <button class="btn success" onclick="postGstInvoice()">✓ Post Invoice</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="gst-invoices">
+      <div class="card" id="gstInvListCard"></div>
+    </div>
+    <div class="panel" id="gst-returns">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="gstReturnsGrid"></div>
+    </div>
+    <div class="panel" id="gst-itc">
+      <div class="card"><table class="tbl" id="itcTbl"></table></div>
+    </div>
+  </div>
+
+  <!-- ══════════ INVENTORY ══════════ -->
+  <div class="page" id="page-inventory">
+    <div class="tabs">
+      <button class="tab active" onclick="showInvTab('products',this)">Products</button>
+      <button class="tab" onclick="showInvTab('po',this)">Purchase Orders</button>
+      <button class="tab" onclick="showInvTab('movements',this)">Movements</button>
+      <button class="tab" onclick="showInvTab('alerts',this)">⚠️ Alerts</button>
+      <button class="tab" onclick="showInvTab('valuation',this)">Valuation</button>
+    </div>
+    <div class="panel active" id="inv-products">
+      <div class="kpi-grid g4" style="margin-bottom:16px">
+        <div class="kpi blue"><div class="kpi-lbl">Total Products</div><div class="kpi-val">12</div><div class="kpi-sub">Across 5 categories</div></div>
+        <div class="kpi green"><div class="kpi-lbl">Stock Value</div><div class="kpi-val">₹1,45,000</div><div class="kpi-sub">At cost price</div></div>
+        <div class="kpi yellow"><div class="kpi-lbl">Low Stock</div><div class="kpi-val">2</div><div class="kpi-sub">Below reorder level</div></div>
+        <div class="kpi red"><div class="kpi-lbl">Out of Stock</div><div class="kpi-val">1</div><div class="kpi-sub">Needs immediate PO</div></div>
+      </div>
+      <div class="filter-bar">
+        <input class="fi-sm" type="text" placeholder="🔍  Search products..." id="prodSearch" oninput="filterProds()" style="flex:1;max-width:260px">
+        <select class="fi-sm" id="stockStatusFilter" onchange="filterProds()"><option value="">All Status</option><option value="ok">In Stock</option><option value="low">Low</option><option value="critical">Critical</option><option value="out">Out of Stock</option></select>
+        <button class="btn primary" onclick="openAddProd()">+ Add Product</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="prodGrid"></div>
+    </div>
+    <div class="panel" id="inv-po"><div class="card" id="poCard"></div></div>
+    <div class="panel" id="inv-movements"><div class="card" id="mvCard"></div></div>
+    <div class="panel" id="inv-alerts"><div id="alertsArea"></div></div>
+    <div class="panel" id="inv-valuation"><div class="card"><table class="tbl" id="valTbl"></table></div></div>
+  </div>
+
+  <!-- ══════════ PAYROLL ══════════ -->
+  <div class="page" id="page-payroll">
+    <div class="tabs">
+      <button class="tab active" onclick="showPayTab('employees',this)">Employees</button>
+      <button class="tab" onclick="showPayTab('process',this)">Process Payroll</button>
+      <button class="tab" onclick="showPayTab('payslips',this)">Payslips</button>
+      <button class="tab" onclick="showPayTab('statutory',this)">Statutory</button>
+      <button class="tab" onclick="showPayTab('reports',this)">Reports</button>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <div class="panel active" id="pay-employees">
+      <div class="kpi-grid g4" style="margin-bottom:16px">
+        <div class="kpi blue"><div class="kpi-lbl">Total Employees</div><div class="kpi-val">12</div><div class="kpi-sub">Active headcount</div></div>
+        <div class="kpi green"><div class="kpi-lbl">Gross Payroll</div><div class="kpi-val">₹3,84,000</div><div class="kpi-sub">Monthly CTC</div></div>
+        <div class="kpi orange"><div class="kpi-lbl">Net Payable</div><div class="kpi-val">₹3,37,920</div><div class="kpi-sub">After deductions</div></div>
+        <div class="kpi purple"><div class="kpi-lbl">PF Liability</div><div class="kpi-val">₹46,080</div><div class="kpi-sub">Employer + Employee</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+        <input class="fi-sm" placeholder="🔍  Search employees..." style="width:240px">
+        <button class="btn primary" onclick="openAddEmp()">+ Add Employee</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px" id="empGrid"></div>
+    </div>
+
+    <!-- PROCESS PAYROLL -->
+    <div class="panel" id="pay-process">
+      <div class="form-card">
+        <div class="form-title">⚙️ Process Payroll — March 2026</div>
+        <div class="fgrid3" style="margin-bottom:16px">
+          <div class="fg"><label class="fl">Payroll Month</label><input class="fi" value="March 2026" readonly style="color:var(--muted)"></div>
+          <div class="fg"><label class="fl">Payment Date</label><input class="fi" type="date" value="2026-03-31"></div>
+          <div class="fg"><label class="fl">Payment Mode</label><select class="fi"><option>Bank Transfer (NEFT)</option><option>Bank Transfer (IMPS)</option><option>Cheque</option></select></div>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div style="display:grid;grid-template-columns:24px 1fr 80px 100px 80px 90px 90px 100px 80px;gap:0;padding:8px 14px;border-bottom:2px solid var(--border);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">
+            <span></span><span>Employee</span><span class="r">Basic</span><span class="r">Gross</span><span class="r">PF</span><span class="r">ESI</span><span class="r">Prof Tax</span><span class="r">Net Pay</span><span class="c">Status</span>
+          </div>
+          <div id="payrollTable"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+          <div style="font-size:13px">Total Net Payable: <strong style="font-size:16px;color:var(--accent2)">₹3,37,920</strong> &nbsp; PF: <strong>₹46,080</strong> &nbsp; ESI: <strong>₹15,360</strong></div>
+          <div style="display:flex;gap:10px">
+            <button class="btn">💾 Save Draft</button>
+            <button class="btn success" onclick="processPayroll()">✓ Process All Salaries</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYSLIPS -->
+    <div class="panel" id="pay-payslips">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:500">Payslips — March 2026</div>
+        <select class="fi-sm"><option>March 2026</option><option>February 2026</option><option>January 2026</option></select>
+      </div>
+      <div class="card" id="payslipList"></div>
+    </div>
+
+    <!-- STATUTORY -->
+    <div class="panel" id="pay-statutory">
+      <div class="kpi-grid g3" style="margin-bottom:20px">
+        <div class="kpi blue"><div class="kpi-lbl">PF Payable (Mar)</div><div class="kpi-val">₹46,080</div><div class="kpi-sub">Due by 15 Apr 2026</div></div>
+        <div class="kpi green"><div class="kpi-lbl">ESI Payable (Mar)</div><div class="kpi-val">₹15,360</div><div class="kpi-sub">Due by 15 Apr 2026</div></div>
+        <div class="kpi orange"><div class="kpi-lbl">TDS on Salary</div><div class="kpi-val">₹12,400</div><div class="kpi-sub">Due by 7 Apr 2026</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Provident Fund (PF) Breakdown</div>
+          <table class="tbl" id="pfTbl"></table>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Professional Tax</div>
+          <div style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:12px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Slab: ₹15,001–₹20,000</span><span>₹150/month</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Slab: ₹20,001–₹40,000</span><span>₹200/month</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--muted)">Slab: Above ₹40,000</span><span>₹200/month</span></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn" style="flex:1;justify-content:center">📋 Generate PT Challan</button>
+            <button class="btn success" style="flex:1;justify-content:center" onclick="toast('PT Challan generated!')">✓ Mark Paid</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYROLL REPORTS -->
+    <div class="panel" id="pay-reports">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Monthly Payroll Trend</div>
+          <div class="bar-chart-wrap" id="payrollChart"></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Department-wise Cost</div>
+          <div id="deptCostBreak"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="margin-bottom:14px">Annual Payroll Register</div>
+        <table class="tbl" id="annualPayTbl"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ INVOICES ══════════ -->
+  <div class="page" id="page-invoices">
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:500">All Invoices</div>
+      <button class="btn primary" onclick="nav('gst');setTimeout(()=>showGstTab('create'),80)">+ New Invoice</button>
+    </div>
+    <div class="card" id="allInvoicesCard"></div>
+  </div>
+
+  <!-- ══════════ REPORTS ══════════ -->
+  <div class="page" id="page-reports">
+    <div class="kpi-grid g3">
+      <div class="kpi green"><div class="kpi-lbl">FY Revenue</div><div class="kpi-val">₹12,94,500</div><div class="kpi-sub">Apr 2025 – Mar 2026</div></div>
+      <div class="kpi orange"><div class="kpi-lbl">FY Expenses</div><div class="kpi-val">₹9,81,200</div><div class="kpi-sub">Including payroll</div></div>
+      <div class="kpi blue"><div class="kpi-lbl">Net Profit</div><div class="kpi-val">₹3,13,300</div><div class="kpi-sub">24.2% net margin</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div class="card"><div class="card-title" style="margin-bottom:14px">P&L Summary</div><table class="tbl" id="plTbl"></table></div>
+      <div class="card"><div class="card-title" style="margin-bottom:14px">Balance Sheet</div><table class="tbl" id="bsTbl"></table></div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS ══════════ -->
+  <div class="page" id="page-settings">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-card">
+        <div class="form-title">🏢 Company Details</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="fg"><label class="fl">Company Name</label><input class="fi" value="BizLedger Pvt. Ltd."></div>
+          <div class="fg"><label class="fl">GSTIN</label><input class="fi" value="19AABCB1234A1Z5" style="font-family:monospace"></div>
+          <div class="fg"><label class="fl">PAN</label><input class="fi" value="AABCB1234A" style="font-family:monospace"></div>
+          <div class="fg"><label class="fl">Financial Year Start</label><select class="fi"><option>April (India Standard)</option></select></div>
+          <div class="fg"><label class="fl">Address</label><textarea class="fi" style="resize:vertical;min-height:70px">12, Park Street, Kolkata – 700016, West Bengal</textarea></div>
+          <button class="btn success" onclick="toast('Company details saved ✓')">Save Changes</button>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="form-title">👤 User Management</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface2);border-radius:8px">
+            <div class="avatar">VK</div>
+            <div style="flex:1"><div style="font-weight:500;font-size:13px">Vidyush K.</div><div style="font-size:11px;color:var(--muted)">Administrator</div></div>
+            <span class="tag t-green">Active</span>
+          </div>
+        </div>
+        <button class="btn primary" onclick="toast('User management coming in next build!')">+ Invite User</button>
+        <div class="form-title" style="margin-top:20px">🔐 Role Permissions</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+          <div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:7px"><span>Administrator</span><span style="color:var(--accent2)">Full Access</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:7px"><span>Accountant</span><span style="color:var(--muted)">Accounting + GST</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:7px"><span>HR Manager</span><span style="color:var(--muted)">Payroll only</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:7px"><span>Viewer</span><span style="color:var(--muted)">Read-only</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- content -->
+</div><!-- main -->
+</div><!-- shell -->
+
+<!-- ADD EMPLOYEE MODAL -->
+<div class="modal-bg" id="addEmpModal" onclick="if(event.target.id==='addEmpModal')closeModal('addEmpModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">Add New Employee</div>
+    <div class="fgrid3" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">Full Name</label><input class="fi" id="ne_name" placeholder="e.g. Rahul Sharma"></div>
+      <div class="fg"><label class="fl">Employee ID</label><input class="fi" id="ne_id" readonly style="color:var(--muted)"></div>
+      <div class="fg"><label class="fl">Department</label>
+        <select class="fi" id="ne_dept"><option>Engineering</option><option>Sales</option><option>Finance</option><option>HR</option><option>Operations</option><option>Marketing</option></select>
+      </div>
+    </div>
+    <div class="fgrid3" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">Designation</label><input class="fi" id="ne_desig" placeholder="e.g. Software Engineer"></div>
+      <div class="fg"><label class="fl">Date of Joining</label><input class="fi" type="date" id="ne_doj" value="2026-03-23"></div>
+      <div class="fg"><label class="fl">Employment Type</label><select class="fi"><option>Full-time</option><option>Part-time</option><option>Contract</option></select></div>
+    </div>
+    <div class="fgrid4" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">Basic Salary (₹)</label><input class="fi" id="ne_basic" type="number" placeholder="0" oninput="calcSalPreview()"></div>
+      <div class="fg"><label class="fl">HRA (₹)</label><input class="fi" id="ne_hra" type="number" placeholder="0" oninput="calcSalPreview()"></div>
+      <div class="fg"><label class="fl">DA (₹)</label><input class="fi" id="ne_da" type="number" placeholder="0" oninput="calcSalPreview()"></div>
+      <div class="fg"><label class="fl">Other Allow. (₹)</label><input class="fi" id="ne_other" type="number" placeholder="0" oninput="calcSalPreview()"></div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px" id="salPreview">
+      <div style="color:var(--muted);margin-bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em">Salary Preview</div>
+      <div style="display:flex;gap:20px">
+        <div><div style="font-size:10px;color:var(--muted)">Gross</div><div id="prevGross" style="font-family:var(--serif);font-size:18px">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">PF (Employee 12%)</div><div id="prevPF" style="font-size:15px;color:var(--accent3)">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">ESI (0.75%)</div><div id="prevESI" style="font-size:15px;color:var(--accent3)">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">Net Salary</div><div id="prevNet" style="font-family:var(--serif);font-size:18px;color:var(--accent2)">₹0</div></div>
+      </div>
+    </div>
+    <div class="fgrid2" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">PAN Number</label><input class="fi" placeholder="ABCDE1234F" style="font-family:monospace"></div>
+      <div class="fg"><label class="fl">Bank Account</label><input class="fi" placeholder="Account number"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('addEmpModal')">Cancel</button>
+      <button class="btn primary" onclick="saveEmployee()">Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PRODUCT MODAL -->
+<div class="modal-bg" id="addProdModal" onclick="if(event.target.id==='addProdModal')closeModal('addProdModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">Add New Product</div>
+    <div class="fgrid3" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">Name</label><input class="fi" id="np_name" placeholder="Product name"></div>
+      <div class="fg"><label class="fl">SKU</label><input class="fi" id="np_sku" readonly style="color:var(--muted)"></div>
+      <div class="fg"><label class="fl">Category</label><select class="fi" id="np_cat"><option>Electronics</option><option>Packaging</option><option>Office Supplies</option><option>Raw Materials</option><option>Finished Goods</option></select></div>
+    </div>
+    <div class="fgrid4" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">Opening Qty</label><input class="fi" id="np_qty" type="number" placeholder="0"></div>
+      <div class="fg"><label class="fl">Reorder At</label><input class="fi" id="np_reorder" type="number" placeholder="10"></div>
+      <div class="fg"><label class="fl">Cost Price (₹)</label><input class="fi" id="np_cost" type="number" placeholder="0" oninput="prodMargin()"></div>
+      <div class="fg"><label class="fl">Sell Price (₹)</label><input class="fi" id="np_sell" type="number" placeholder="0" oninput="prodMargin()"></div>
+    </div>
+    <div class="fg" style="margin-bottom:14px"><label class="fl">Margin</label><input class="fi" id="np_margin" readonly style="color:var(--accent2)"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('addProdModal')">Cancel</button>
+      <button class="btn primary" onclick="saveProd()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYSLIP MODAL -->
+<div class="modal-bg" id="payslipModal" onclick="if(event.target.id==='payslipModal')closeModal('payslipModal')">
+  <div class="modal-white" onclick="event.stopPropagation()">
+    <div id="payslipContent" style="padding:36px"></div>
+    <div class="modal-footer-white">
+      <button class="mtn mtn-close" onclick="closeModal('payslipModal')">Close</button>
+      <button class="mtn mtn-print" onclick="window.print()">🖨 Print / PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+/* ═══════════════════════ DATA ═══════════════════════ */
+const COA = [
+  {code:'1001',name:'Cash in Hand',        group:'Assets',     sub:'Current Asset',    bal:82600,  side:'Dr'},
+  {code:'1002',name:'Bank Account – HDFC', group:'Assets',     sub:'Current Asset',    bal:400000, side:'Dr'},
+  {code:'1003',name:'Accounts Receivable', group:'Assets',     sub:'Current Asset',    bal:93500,  side:'Dr'},
+  {code:'1004',name:'Inventory / Stock',   group:'Assets',     sub:'Current Asset',    bal:145000, side:'Dr'},
+  {code:'1005',name:'Office Equipment',    group:'Assets',     sub:'Fixed Asset',      bal:120000, side:'Dr'},
+  {code:'2001',name:'Accounts Payable',    group:'Liabilities',sub:'Current Liability',bal:41000,  side:'Cr'},
+  {code:'2002',name:'GST Payable',         group:'Liabilities',sub:'Tax',              bal:18340,  side:'Cr'},
+  {code:'2003',name:'TDS Payable',         group:'Liabilities',sub:'Tax',              bal:9200,   side:'Cr'},
+  {code:'3001',name:"Owner's Capital",     group:'Equity',     sub:'Capital',          bal:750000, side:'Cr'},
+  {code:'3002',name:'Retained Earnings',   group:'Equity',     sub:'Reserve',          bal:166480, side:'Cr'},
+  {code:'4001',name:'Sales Revenue',       group:'Income',     sub:'Direct Income',    bal:124500, side:'Cr'},
+  {code:'4002',name:'Service Income',      group:'Income',     sub:'Direct Income',    bal:18000,  side:'Cr'},
+  {code:'5001',name:'Purchase / COGS',     group:'Expenses',   sub:'Direct Expense',   bal:48000,  side:'Dr'},
+  {code:'5002',name:'Salaries & Wages',    group:'Expenses',   sub:'Indirect Expense', bal:337920, side:'Dr'},
+  {code:'5003',name:'Rent & Utilities',    group:'Expenses',   sub:'Indirect Expense', bal:24000,  side:'Dr'},
+  {code:'5004',name:'Office Supplies',     group:'Expenses',   sub:'Indirect Expense', bal:3280,   side:'Dr'},
+];
+
+let JE = [
+  {id:'JE-0001',date:'2026-03-01',narr:'Opening cash balance',   accounts:"Cash / Capital",        amount:82600,  status:'posted'},
+  {id:'JE-0002',date:'2026-03-03',narr:'Sales – Ravi Traders',   accounts:"Receivable / Sales",    amount:24500,  status:'posted'},
+  {id:'JE-0003',date:'2026-03-08',narr:'Bank receipt – Mehta',   accounts:"Bank / Receivable",     amount:18200,  status:'posted'},
+  {id:'JE-0004',date:'2026-03-20',narr:'Monthly rent payment',   accounts:"Rent / Bank",           amount:24000,  status:'posted'},
+  {id:'JE-0005',date:'2026-03-23',narr:'Service invoice TechSoft',accounts:"Receivable / Service", amount:18000,  status:'draft'},
+];
+
+const INVOICES = [
+  {no:'INV-0001',party:'Ravi Traders',      gstin:'19AABCR1234A1Z5',date:'2026-03-03',tax:3738, total:24500,status:'unpaid'},
+  {no:'INV-0002',party:'Kumar & Sons',       gstin:'19XYZCK5678B2Z1',date:'2026-03-09',tax:5797, total:38000,status:'paid'},
+  {no:'INV-0003',party:'Patel Exports',      gstin:'24AABCP9012C3Z7',date:'2026-03-12',tax:4424, total:29000,status:'paid'},
+  {no:'INV-0004',party:'Sharma Enterprises', gstin:'19AABCS3456D4Z2',date:'2026-03-16',tax:5034, total:33000,status:'partial'},
+  {no:'INV-0005',party:'Mehta & Co.',        gstin:'27AABCM7890E5Z8',date:'2026-03-18',tax:2776, total:18200,status:'paid'},
+  {no:'INV-0006',party:'Gupta Industries',   gstin:'07AABCG2345F6Z4',date:'2026-03-20',tax:1495, total:9800, status:'unpaid'},
+  {no:'INV-0007',party:'TechSoft Pvt Ltd',   gstin:'29AABCT6789G7Z0',date:'2026-03-22',tax:2746, total:18000,status:'draft'},
+];
+
+let PRODUCTS = [
+  {sku:'EL-001',name:'HP Laptop 15s',        cat:'Electronics',    qty:8,  reorder:3, max:20,  cost:42000,sell:52000,status:'ok'},
+  {sku:'EL-002',name:'Dell Monitor 24"',      cat:'Electronics',    qty:5,  reorder:3, max:15,  cost:14500,sell:18000,status:'ok'},
+  {sku:'EL-003',name:'Wireless Keyboard Set', cat:'Electronics',    qty:2,  reorder:5, max:25,  cost:1800, sell:2400, status:'critical'},
+  {sku:'EL-004',name:'USB-C Hub 7-Port',      cat:'Electronics',    qty:0,  reorder:5, max:30,  cost:1200, sell:1800, status:'out'},
+  {sku:'PK-001',name:'Corrugated Box',        cat:'Packaging',      qty:320,reorder:100,max:1000,cost:28,  sell:45,   status:'ok'},
+  {sku:'PK-002',name:'Bubble Wrap Roll 50m',  cat:'Packaging',      qty:9,  reorder:10,max:50,  cost:420,  sell:650,  status:'low'},
+  {sku:'OS-001',name:'A4 Paper Ream',         cat:'Office Supplies', qty:4,  reorder:20,max:200, cost:285,  sell:380,  status:'critical'},
+  {sku:'OS-002',name:'Printer Ink HP-803',    cat:'Office Supplies', qty:11, reorder:12,max:60,  cost:340,  sell:480,  status:'low'},
+  {sku:'RM-001',name:'Raw Plastic Granules',  cat:'Raw Materials',   qty:450,reorder:100,max:1000,cost:85,  sell:0,   status:'ok'},
+  {sku:'FG-001',name:'Moulded Plastic Casing',cat:'Finished Goods',  qty:140,reorder:50,max:500, cost:320,  sell:490,  status:'ok'},
+];
+
+const MOVEMENTS = [
+  {date:'2026-03-23',prod:'A4 Paper Ream',        ref:'INV-0008',type:'out',qty:-5,  bal:4  },
+  {date:'2026-03-22',prod:'Corrugated Box',        ref:'INV-0007',type:'out',qty:-30, bal:320},
+  {date:'2026-03-20',prod:'HP Laptop 15s',         ref:'PO-0005', type:'in', qty:3,   bal:8  },
+  {date:'2026-03-18',prod:'USB-C Hub 7-Port',      ref:'ADJ-001', type:'adj',qty:-2,  bal:0  },
+  {date:'2026-03-15',prod:'Bubble Wrap Roll 50m',  ref:'INV-0005',type:'out',qty:-3,  bal:9  },
+  {date:'2026-03-12',prod:'Corrugated Box',        ref:'PO-0003', type:'in', qty:100, bal:350},
+];
+
+const PO_LIST = [
+  {no:'PO-0001',vendor:'ABC Supplies',    date:'2026-03-02',items:4,amount:34200,status:'received'},
+  {no:'PO-0002',vendor:'Prakash Traders', date:'2026-03-08',items:2,amount:12400,status:'received'},
+  {no:'PO-0003',vendor:'Metro Packaging', date:'2026-03-12',items:3,amount:8750, status:'partial'},
+  {no:'PO-0004',vendor:'Raj Paper Mart',  date:'2026-03-15',items:5,amount:5640, status:'ordered'},
+  {no:'PO-0005',vendor:'TechSource India',date:'2026-03-20',items:1,amount:42000,status:'ordered'},
+];
+
+const AVATAR_COLORS = ['#4f7cff','#00d2a0','#ff7c4f','#c77dff','#ff4f6e','#f5c518','#00bcd4','#ff6b9d'];
+let EMPLOYEES = [
+  {id:'EMP-001',name:'Rahul Sharma',   dept:'Engineering', desig:'Senior Engineer',    basic:35000,hra:14000,da:3500, other:2500,status:'active'},
+  {id:'EMP-002',name:'Priya Verma',    dept:'Finance',     desig:'Accounts Manager',   basic:30000,hra:12000,da:3000, other:2000,status:'active'},
+  {id:'EMP-003',name:'Amit Kumar',     dept:'Sales',       desig:'Sales Executive',    basic:22000,hra:8800, da:2200, other:1500,status:'active'},
+  {id:'EMP-004',name:'Sneha Patil',    dept:'HR',          desig:'HR Executive',       basic:25000,hra:10000,da:2500, other:1800,status:'active'},
+  {id:'EMP-005',name:'Vikram Singh',   dept:'Engineering', desig:'Junior Developer',   basic:20000,hra:8000, da:2000, other:1200,status:'active'},
+  {id:'EMP-006',name:'Nandita Roy',    dept:'Operations',  desig:'Operations Lead',    basic:28000,hra:11200,da:2800, other:2000,status:'active'},
+  {id:'EMP-007',name:'Karan Mehta',    dept:'Marketing',   desig:'Marketing Manager',  basic:32000,hra:12800,da:3200, other:2500,status:'active'},
+  {id:'EMP-008',name:'Deepa Nair',     dept:'Engineering', desig:'QA Engineer',        basic:24000,hra:9600, da:2400, other:1600,status:'active'},
+  {id:'EMP-009',name:'Suresh Iyer',    dept:'Finance',     desig:'Finance Analyst',    basic:27000,hra:10800,da:2700, other:1900,status:'active'},
+  {id:'EMP-010',name:'Ananya Gupta',   dept:'Sales',       desig:'Sales Manager',      basic:33000,hra:13200,da:3300, other:2400,status:'active'},
+  {id:'EMP-011',name:'Rohit Joshi',    dept:'Operations',  desig:'Logistics Executive',basic:21000,hra:8400, da:2100, other:1400,status:'active'},
+  {id:'EMP-012',name:'Meena Krishnan', dept:'Engineering', desig:'Tech Lead',          basic:40000,hra:16000,da:4000, other:3000,status:'active'},
+];
+
+const ITC_DATA = [
+  {date:'2026-03-02',supplier:'ABC Supplies',    inv:'PUR-001',taxable:8000, cgst:720, sgst:720, igst:0,  eligible:'full'},
+  {date:'2026-03-07',supplier:'Prakash Traders', inv:'PUR-002',taxable:5000, cgst:450, sgst:450, igst:0,  eligible:'full'},
+  {date:'2026-03-12',supplier:'Metro Packaging', inv:'PUR-003',taxable:3000, cgst:0,   sgst:0,   igst:540,eligible:'partial'},
+  {date:'2026-03-20',supplier:'Raj Paper Mart',  inv:'PUR-005',taxable:4500, cgst:405, sgst:405, igst:0,  eligible:'full'},
+];
+
+/* ═══════════════════════ HELPERS ═══════════════════════ */
+function fmt(n){return '₹'+Math.round(n).toLocaleString('en-IN')}
+function initials(name){return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+function grossSalary(e){return e.basic+e.hra+e.da+e.other}
+function pfEmployee(e){return Math.round(e.basic*0.12)}
+function pfEmployer(e){return Math.round(e.basic*0.12)}
+function esiEmployee(e){const g=grossSalary(e);return g<=21000?Math.round(g*0.0075):0}
+function esiEmployer(e){const g=grossSalary(e);return g<=21000?Math.round(g*0.0325):0}
+function profTax(e){const g=grossSalary(e);return g>40000?200:g>20000?200:g>15000?150:0}
+function netSalary(e){return grossSalary(e)-pfEmployee(e)-esiEmployee(e)-profTax(e)}
+function tagClass(s){return {paid:'t-green',unpaid:'t-red',draft:'t-blue',partial:'t-orange',posted:'t-green',ordered:'t-blue',received:'t-green',cancelled:'t-muted'}[s]||'t-muted'}
+
+/* ═══════════════════════ NAVIGATION ═══════════════════════ */
+const PAGE_TITLES = {dashboard:'Dashboard',accounting:'Accounting',gst:'GST Compliance',inventory:'Inventory',payroll:'Payroll',invoices:'Invoices',reports:'Reports',settings:'Settings'};
+const TOPBAR_BTNS = {
+  dashboard:`<button class="btn">📅 Mar 2026</button><button class="btn">🔔 Alerts</button><button class="btn primary" onclick="nav('gst');setTimeout(()=>showGstTab('create'),80)">+ New Invoice</button>`,
+  accounting:`<button class="btn">📥 Import</button><button class="btn primary" onclick="openJEForm()">+ Journal Entry</button>`,
+  gst:`<button class="btn">📅 Mar 2026</button><button class="btn primary" onclick="showGstTab('create')">+ New Invoice</button>`,
+  inventory:`<button class="btn warn" onclick="showInvTab('alerts',document.querySelector('#page-inventory .tab:nth-child(4)'))">⚠️ 3 Alerts</button><button class="btn primary" onclick="openAddProd()">+ Add Product</button>`,
+  payroll:`<button class="btn primary" onclick="openAddEmp()">+ Add Employee</button><button class="btn success" onclick="showPayTab('process',document.querySelector('#page-payroll .tab:nth-child(2)'))">⚙️ Process Payroll</button>`,
+  invoices:`<button class="btn primary" onclick="nav('gst');setTimeout(()=>showGstTab('create'),80)">+ New Invoice</button>`,
+  reports:`<button class="btn primary">📤 Export PDF</button>`,
+  settings:`<button class="btn success" onclick="toast('All settings saved ✓')">Save All</button>`,
+};
+
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const navEl = document.getElementById('nav-'+page);
+  if(navEl){navEl.classList.add('active');navEl.querySelector('.nav-icon').style.background='var(--accent)'}
+  document.querySelectorAll('.nav-item:not(.active) .nav-icon').forEach(i=>i.style.background='');
+  document.getElementById('pageTitle').textContent = PAGE_TITLES[page]||page;
+  document.getElementById('topbarActions').innerHTML = TOPBAR_BTNS[page]||'';
+  document.getElementById('breadcrumb').innerHTML = page!=='dashboard'?`<span onclick="nav('dashboard')">Home</span> › <span>${PAGE_TITLES[page]}</span>`:'';
+}
+
+/* ═══════════════════════ TABS ═══════════════════════ */
+function switchPanels(prefix,id,el,panels){
+  panels.forEach(p=>{const el2=document.getElementById(prefix+p);if(el2)el2.classList.remove('active')});
+  document.querySelectorAll(`#${prefix.replace('-','')}_tabs_dummy, #page-${prefix.split('-')[0]} .tab`).forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById(prefix+id);
+  if(panel)panel.classList.add('active');
+  if(el)el.classList.add('active');
+}
+function showAccTab(id,el){
+  ['coa','journal','trial','ledger'].forEach(p=>document.getElementById('acc-'+p).classList.remove('active'));
+  document.querySelectorAll('#page-accounting .tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('acc-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+}
+function showGstTab(id,el){
+  ['overview','create','invoices','returns','itc'].forEach(p=>{const e=document.getElementById('gst-'+p);if(e)e.classList.remove('active')});
+  document.querySelectorAll('#page-gst .tab').forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById('gst-'+id);if(panel)panel.classList.add('active');
+  if(el)el.classList.add('active');
+  else{const tabs=document.querySelectorAll('#page-gst .tab');const map={overview:0,create:1,invoices:2,returns:3,itc:4};if(tabs[map[id]])tabs[map[id]].classList.add('active')}
+}
+function showInvTab(id,el){
+  ['products','po','movements','alerts','valuation'].forEach(p=>{const e=document.getElementById('inv-'+p);if(e)e.classList.remove('active')});
+  document.querySelectorAll('#page-inventory .tab').forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById('inv-'+id);if(panel)panel.classList.add('active');
+  if(el)el.classList.add('active');
+}
+function showPayTab(id,el){
+  ['employees','process','payslips','statutory','reports'].forEach(p=>{const e=document.getElementById('pay-'+p);if(e)e.classList.remove('active')});
+  document.querySelectorAll('#page-payroll .tab').forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById('pay-'+id);if(panel)panel.classList.add('active');
+  if(el)el.classList.add('active');
+}
+
+/* ═══════════════════════ DASHBOARD RENDER ═══════════════════════ */
+function renderDashboard(){
+  // Chart
+  const chartData=[{m:'Oct',rev:68,exp:42},{m:'Nov',rev:74,exp:49},{m:'Dec',rev:91,exp:55},{m:'Jan',rev:82,exp:47},{m:'Feb',rev:115,exp:61},{m:'Mar',rev:124,exp:63}];
+  const max=140;
+  document.getElementById('dashChart').innerHTML=chartData.map(d=>`
+    <div class="bar-grp"><div class="bar-pair">
+      <div class="bar inc" style="height:${Math.round(d.rev/max*100)}px" title="Rev ${fmt(d.rev*1000)}"></div>
+      <div class="bar exp" style="height:${Math.round(d.exp/max*100)}px" title="Exp ${fmt(d.exp*1000)}"></div>
+    </div><div class="bar-lbl">${d.m}</div></div>`).join('');
+  // Invoices
+  const tagC={paid:'t-green',unpaid:'t-red',draft:'t-blue',partial:'t-orange'};
+  document.getElementById('dashInvoices').innerHTML=INVOICES.filter(i=>i.status!=='paid').slice(0,4).map(i=>`
+    <div class="list-row" onclick="nav('invoices')">
+      <div style="flex:1"><div style="font-weight:500">${i.party}</div><div style="font-size:11px;color:var(--muted)">Due soon</div></div>
+      <span style="font-weight:600">${fmt(i.total)}</span>
+      <span class="tag ${tagC[i.status]}">${i.status.charAt(0).toUpperCase()+i.status.slice(1)}</span>
+    </div>`).join('');
+  // Stock alerts
+  const crit=PRODUCTS.filter(p=>p.status==='critical'||p.status==='out');
+  document.getElementById('dashStockAlerts').innerHTML=crit.map(p=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <div><div style="font-weight:500">${p.name}</div><div style="font-size:11px;color:var(--muted)">${p.sku}</div></div>
+      <span class="tag ${p.status==='out'?'t-red':'t-yellow'}">${p.qty} left</span>
+    </div>`).join('')+'<div style="margin-top:10px;text-align:center"><button class="btn" style="width:100%;justify-content:center" onclick="nav(\'inventory\')">View all alerts</button></div>';
+  // GST
+  document.getElementById('dashGST').innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output GST</span><span style="font-weight:600">₹22,410</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">ITC Available</span><span style="color:var(--accent2);font-weight:600">₹4,070</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="font-weight:600">Net Payable</span><span style="color:var(--accent3);font-weight:700">₹18,340</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:12px"><span style="color:var(--muted)">GSTR-3B</span><span class="tag t-orange">Pending</span></div>`;
+  // Payroll
+  const totalNet=EMPLOYEES.reduce((s,e)=>s+netSalary(e),0);
+  const totalGross=EMPLOYEES.reduce((s,e)=>s+grossSalary(e),0);
+  const totalPF=EMPLOYEES.reduce((s,e)=>s+pfEmployee(e),0);
+  document.getElementById('dashPayroll').innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Employees</span><span style="font-weight:600">12</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Gross Payroll</span><span style="font-weight:600">${fmt(totalGross)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="font-weight:600">Net Payable</span><span style="color:var(--accent2);font-weight:700">${fmt(totalNet)}</span></div>
+    <div class="prog-wrap" style="margin-top:10px"><div class="prog-lbl"><span>Processed</span><span>8/12</span></div><div class="prog"><div class="prog-fill" style="width:66%;background:var(--accent)"></div></div></div>`;
+}
+
+/* ═══════════════════════ ACCOUNTING RENDER ═══════════════════════ */
+function renderCOA(){
+  const groups=['Assets','Liabilities','Equity','Income','Expenses'];
+  const colors={Assets:'var(--accent)',Liabilities:'var(--danger)',Equity:'var(--accent4)',Income:'var(--accent2)',Expenses:'var(--accent3)'};
+  document.getElementById('coaGrid').innerHTML=groups.map(g=>{
+    const items=COA.filter(a=>a.group===g);
+    const total=items.reduce((s,a)=>s+a.bal,0);
+    const col=colors[g];
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+      <div style="padding:12px 16px;display:flex;align-items:center;border-bottom:1px solid var(--border);border-left:3px solid ${col}">
+        <span style="font-weight:500;font-size:13px;flex:1">${g}</span>
+        <span style="font-weight:600;color:${col}">${fmt(total)}</span>
+      </div>
+      ${items.map(a=>`<div style="display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);font-size:12.5px;gap:8px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <span style="color:var(--muted);font-family:monospace;font-size:11px;width:40px">${a.code}</span>
+        <span style="flex:1">${a.name}<div style="font-size:10px;color:var(--muted)">${a.sub}</div></span>
+        <span style="font-weight:500;color:${col}">${fmt(a.bal)}</span>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderJEList(){
+  document.getElementById('jeListCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:14px;font-weight:500">Journal Entries</div>
+      <button class="btn primary" onclick="openJEForm()">+ New Entry</button>
+    </div>
+    ${JE.slice().reverse().map(je=>`
+    <div class="list-row">
+      <span style="font-family:monospace;font-size:11px;color:var(--muted);width:70px">${je.id}</span>
+      <span style="width:100px;font-size:12px;color:var(--muted)">${je.date}</span>
+      <div style="flex:1"><div style="font-weight:500">${je.narr}</div><div style="font-size:11px;color:var(--muted)">${je.accounts}</div></div>
+      <span style="font-weight:600;width:90px;text-align:right">${fmt(je.amount)}</span>
+      <span class="tag ${je.status==='posted'?'t-green':'t-blue'}">${je.status==='posted'?'Posted':'Draft'}</span>
+    </div>`).join('')}`;
+}
+
+function renderTrialBalance(){
+  let tdr=0,tcr=0,rows='';
+  const groups=['Assets','Liabilities','Equity','Income','Expenses'];
+  const header=`<thead><tr><th>Account</th><th>Code</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>`;
+  groups.forEach(g=>{
+    rows+=`<tr style="background:var(--surface2)"><td colspan="4" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:7px 14px">${g}</td></tr>`;
+    COA.filter(a=>a.group===g).forEach(a=>{
+      const dr=a.side==='Dr'?a.bal:0,cr=a.side==='Cr'?a.bal:0;
+      tdr+=dr;tcr+=cr;
+      rows+=`<tr><td style="padding-left:24px">${a.name}</td><td style="text-align:center;font-family:monospace;font-size:11px;color:var(--muted)">${a.code}</td>
+        <td class="r" style="color:${dr?'var(--text)':'var(--muted)'}">${dr?fmt(dr):'—'}</td>
+        <td class="r" style="color:${cr?'var(--accent2)':'var(--muted)'}">${cr?fmt(cr):'—'}</td></tr>`;
+    });
+  });
+  const ok=tdr===tcr;
+  rows+=`<tr style="border-top:2px solid var(--border)"><td colspan="2" style="font-weight:600;padding:12px 14px">Grand Total</td>
+    <td class="r" style="font-weight:700;color:${ok?'var(--accent2)':'var(--danger)'}">${fmt(tdr)}</td>
+    <td class="r" style="font-weight:700;color:${ok?'var(--accent2)':'var(--danger)'}">${fmt(tcr)}</td></tr>`;
+  document.getElementById('tbTbl').innerHTML=header+rows+'</tbody>';
+}
+
+function populateLedSel(){
+  const sel=document.getElementById('ledSel');
+  sel.innerHTML='<option value="">— Select Account —</option>'+COA.map(a=>`<option value="${a.code}">${a.code} — ${a.name}</option>`).join('');
+}
+function renderLedger(){
+  const code=document.getElementById('ledSel').value;
+  if(!code){document.getElementById('ledgerCard').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">Select an account above</div>';return;}
+  const acc=COA.find(a=>a.code===code);
+  const sampleTxns={
+    '1002':[{d:'2026-03-01',n:'Opening balance',dr:400000,cr:0},{d:'2026-03-08',n:'Receipt Mehta',dr:18200,cr:0},{d:'2026-03-20',n:'Rent payment',dr:0,cr:24000},{d:'2026-03-31',n:'Salary transfer',dr:0,cr:48000}],
+    '4001':[{d:'2026-03-03',n:'Invoice Ravi Traders',dr:0,cr:24500},{d:'2026-03-09',n:'Invoice Kumar & Sons',dr:0,cr:38000},{d:'2026-03-20',n:'Invoice Sharma Ent.',dr:0,cr:33000}],
+  };
+  const txns=sampleTxns[code]||[];
+  let run=0,rows=txns.map(t=>{run+=(t.dr-t.cr);return `<tr><td style="color:var(--muted);font-size:12px">${t.d}</td><td>${t.n}</td><td class="r" style="color:var(--accent2)">${t.dr?fmt(t.dr):'—'}</td><td class="r" style="color:var(--accent3)">${t.cr?fmt(t.cr):'—'}</td><td class="r" style="font-family:monospace;font-size:12px;color:${run>=0?'var(--accent)':'var(--danger)'}">${run>=0?'Dr':'Cr'} ${fmt(Math.abs(run))}</td></tr>`;}).join('');
+  if(!rows) rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px">No transactions — showing balance only</td></tr>';
+  document.getElementById('ledgerCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+      <div><div style="font-weight:500">${acc.name}</div><div style="font-size:11px;color:var(--muted)">${acc.code} · ${acc.group}</div></div>
+      <div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Balance</div><div style="font-family:var(--serif);font-size:20px;color:var(--accent2)">${fmt(acc.bal)}</div></div>
+    </div>
+    <table class="tbl"><thead><tr><th>Date</th><th>Narration</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Running Bal</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ── JE FORM ── */
+let jeLineCount=2;
+function openJEForm(){
+  document.getElementById('jeRef').value='JE-00'+String(JE.length+1).padStart(2,'0');
+  document.getElementById('jeLines').innerHTML='';
+  jeLineCount=0;
+  addJELine();addJELine();
+  document.getElementById('jeFormWrap').style.display='block';
+  showAccTab('journal',document.querySelectorAll('#page-accounting .tab')[1]);
+}
+function addJELine(){
+  jeLineCount++;
+  const opts=COA.map(a=>`<option value="${a.code}">${a.code} — ${a.name}</option>`).join('');
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td style="color:var(--muted);font-size:11px;text-align:center">${jeLineCount}</td>
+    <td><select class="fi" style="font-size:12px"><option value="">— Account —</option>${opts}</select></td>
+    <td><input class="fi" style="font-size:12px" type="text" placeholder="Description"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right" type="number" placeholder="0" oninput="jeRecalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right" type="number" placeholder="0" oninput="jeRecalc()"></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove();jeRecalc()">✕</button></td>`;
+  document.getElementById('jeLines').appendChild(tr);
+}
+function jeRecalc(){
+  let dr=0,cr=0;
+  document.querySelectorAll('#jeLines tr').forEach(row=>{
+    const ins=row.querySelectorAll('input[type=number]');
+    dr+=parseFloat(ins[0]?.value||0);cr+=parseFloat(ins[1]?.value||0);
+  });
+  document.getElementById('jeTotDr').textContent=fmt(dr);
+  document.getElementById('jeTotCr').textContent=fmt(cr);
+  const diff=Math.abs(dr-cr);
+  const el=document.getElementById('jeDiff');
+  el.textContent=fmt(diff);el.className=diff===0?'up':'down';
+}
+function postJE(){
+  const narr=document.getElementById('jeNarr').value.trim();
+  if(!narr){toast('Please add a narration','e');return;}
+  let dr=0,cr=0;
+  document.querySelectorAll('#jeLines tr').forEach(row=>{const ins=row.querySelectorAll('input[type=number]');dr+=parseFloat(ins[0]?.value||0);cr+=parseFloat(ins[1]?.value||0);});
+  if(Math.abs(dr-cr)>0.01){toast('Entry not balanced — Dr ≠ Cr','e');return;}
+  if(dr===0){toast('Please enter amounts','e');return;}
+  JE.push({id:document.getElementById('jeRef').value,date:document.getElementById('jeDate').value,narr,accounts:'Multiple accounts',amount:dr,status:'posted'});
+  document.getElementById('jeFormWrap').style.display='none';
+  renderJEList();toast('Journal entry posted ✓');
+}
+
+/* ═══════════════════════ GST RENDER ═══════════════════════ */
+function renderGST(){
+  // Filing status
+  document.getElementById('gstFilingStatus').innerHTML=[
+    {title:'GSTR-1 (Mar 2026)',sub:'Outward supplies — Due 11 Apr',status:'filed'},
+    {title:'GSTR-3B (Mar 2026)',sub:'Summary return — Due 20 Apr',status:'pending'},
+    {title:'GSTR-1 (Feb 2026)',sub:'Outward supplies',status:'filed'},
+  ].map(r=>`<div style="background:var(--surface2);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-weight:500;font-size:13px">${r.title}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${r.sub}</div></div>
+    <span class="tag ${r.status==='filed'?'t-green':'t-orange'}">${r.status==='filed'?'✓ Filed':'⏳ Pending'}</span>
+  </div>`).join('');
+  // Invoice list
+  const tagC={paid:'t-green',unpaid:'t-red',draft:'t-blue',partial:'t-orange'};
+  document.getElementById('gstInvListCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:500">All GST Invoices</div>
+    ${INVOICES.map(i=>`<div class="list-row">
+      <span style="width:72px;font-family:monospace;font-size:11px;color:var(--muted)">${i.no}</span>
+      <div style="flex:1"><div style="font-weight:500">${i.party}</div><div style="font-size:11px;color:var(--muted);font-family:monospace">${i.gstin}</div></div>
+      <span style="width:100px;font-size:12px;color:var(--muted)">${i.date}</span>
+      <span style="width:80px;text-align:right;color:var(--accent3);font-size:12px">${fmt(i.tax)}</span>
+      <span style="width:100px;font-weight:600;text-align:right">${fmt(i.total)}</span>
+      <span class="tag ${tagC[i.status]}">${i.status.charAt(0).toUpperCase()+i.status.slice(1)}</span>
+    </div>`).join('')}`;
+  // Returns grid
+  document.getElementById('gstReturnsGrid').innerHTML=`
+    <div class="card"><div style="font-size:14px;font-weight:500;margin-bottom:12px">GSTR-1 — March 2026 <span class="tag t-green" style="margin-left:8px">✓ Filed</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Taxable Value</span><span style="font-weight:600">${fmt(124500)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">CGST</span><span style="font-weight:600">${fmt(11205)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span style="color:var(--muted)">SGST</span><span style="font-weight:600">${fmt(11205)}</span></div>
+    </div>
+    <div class="card"><div style="font-size:14px;font-weight:500;margin-bottom:12px">GSTR-3B — March 2026 <span class="tag t-orange" style="margin-left:8px">⏳ Pending</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output Tax</span><span style="font-weight:600">${fmt(22410)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">ITC</span><span style="color:var(--accent2);font-weight:600">−${fmt(4070)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700"><span>Net Payable</span><span style="color:var(--accent3)">${fmt(18340)}</span></div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" onclick="toast('GST portal integration coming soon!')">🚀 File Now</button>
+    </div>`;
+  // ITC
+  document.getElementById('itcTbl').innerHTML=`
+    <thead><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th class="r">CGST</th><th class="r">SGST</th><th class="r">IGST</th><th class="r">Total ITC</th><th>Eligible</th></tr></thead>
+    <tbody>${ITC_DATA.map(r=>`<tr>
+      <td style="color:var(--muted);font-size:12px">${r.date}</td><td style="font-weight:500">${r.supplier}</td>
+      <td style="font-family:monospace;font-size:11px">${r.inv}</td>
+      <td class="r">${r.cgst?fmt(r.cgst):'—'}</td><td class="r">${r.sgst?fmt(r.sgst):'—'}</td><td class="r">${r.igst?fmt(r.igst):'—'}</td>
+      <td class="r" style="font-weight:600;color:var(--accent2)">${fmt(r.cgst+r.sgst+r.igst)}</td>
+      <td><span class="tag ${r.eligible==='full'?'t-green':r.eligible==='partial'?'t-orange':'t-red'}">${r.eligible==='full'?'✓ Eligible':r.eligible==='partial'?'~ Partial':'✗ Blocked'}</span></td>
+    </tr>`).join('')}</tbody>`;
+}
+
+/* GST Invoice builder */
+let gstItemCount=0;
+function addGstItem(){
+  gstItemCount++;
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td style="color:var(--muted);font-size:11px">${gstItemCount}</td>
+    <td><input class="fi" style="font-size:12px" placeholder="Description" oninput="gstCalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:center" value="9983" oninput="gstCalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:center" type="number" value="1" min="1" oninput="gstCalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right" type="number" placeholder="0" oninput="gstCalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:center" type="number" value="18" oninput="gstCalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right" readonly style="color:var(--muted)" id="gt${gstItemCount}taxable"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right;color:var(--accent2);font-weight:500" readonly id="gt${gstItemCount}total"></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove();gstCalc()">✕</button></td>`;
+  document.getElementById('gstItems').appendChild(tr);gstCalc();
+}
+function gstCalc(){
+  const inter=document.getElementById('gstBuyerState').value!=='WB';
+  let sub=0,tax=0;
+  document.querySelectorAll('#gstItems tr').forEach(row=>{
+    const inputs=row.querySelectorAll('input[type=number]');
+    const qty=parseFloat(inputs[0]?.value||0),rate=parseFloat(inputs[1]?.value||0),pct=parseFloat(inputs[2]?.value||0);
+    const txbl=qty*rate,t=txbl*pct/100;
+    sub+=txbl;tax+=t;
+    const t1=row.querySelector('[id$="taxable"]'),t2=row.querySelector('[id$="total"]');
+    if(t1)t1.value=txbl?fmt(txbl):'';
+    if(t2)t2.value=(txbl+t)?fmt(txbl+t):'';
+  });
+  document.getElementById('gstSubtotal').textContent=fmt(sub);
+  document.getElementById('gstGrand').textContent=fmt(sub+tax);
+  document.getElementById('cgstRow').style.display=inter?'none':'flex';
+  document.getElementById('sgstRow').style.display=inter?'none':'flex';
+  document.getElementById('igstRow').style.display=inter?'flex':'none';
+  if(inter)document.getElementById('gstIGST').textContent=fmt(tax);
+  else{document.getElementById('gstCGST').textContent=fmt(tax/2);document.getElementById('gstSGST').textContent=fmt(tax/2);}
+}
+function postGstInvoice(){
+  const buyer=document.getElementById('gstBuyerName').value.trim();
+  if(!buyer){toast('Enter customer name','e');return;}
+  toast('Invoice posted and saved ✓');
+  showGstTab('invoices');
+}
+
+/* ═══════════════════════ INVENTORY RENDER ═══════════════════════ */
+function renderInventory(){
+  filterProds();
+  // PO
+  document.getElementById('poCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:500">Purchase Orders</div>
+    ${PO_LIST.map(p=>`<div class="list-row">
+      <span style="font-family:monospace;font-size:11px;color:var(--muted);width:72px">${p.no}</span>
+      <span style="flex:1;font-weight:500">${p.vendor}</span>
+      <span style="width:100px;font-size:12px;color:var(--muted)">${p.date}</span>
+      <span style="width:70px;text-align:center;font-size:12px;color:var(--muted)">${p.items} items</span>
+      <span style="width:100px;font-weight:600;text-align:right">${fmt(p.amount)}</span>
+      <span class="tag ${tagClass(p.status)}">${p.status.charAt(0).toUpperCase()+p.status.slice(1)}</span>
+    </div>`).join('')}`;
+  // Movements
+  document.getElementById('mvCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:500">Stock Movements</div>
+    ${MOVEMENTS.map(m=>`<div class="list-row">
+      <span style="width:100px;font-size:12px;color:var(--muted)">${m.date}</span>
+      <span style="flex:1;font-weight:500">${m.prod}</span>
+      <span style="font-family:monospace;font-size:11px;color:var(--accent);width:80px">${m.ref}</span>
+      <span class="tag ${m.type==='in'?'t-green':m.type==='adj'?'t-blue':'t-orange'}">${m.type==='in'?'In':m.type==='adj'?'Adj':'Out'}</span>
+      <span style="width:80px;text-align:right;font-weight:600;color:${m.qty>0?'var(--accent2)':'var(--accent3)'}">${m.qty>0?'+':''} ${m.qty}</span>
+      <span style="width:80px;text-align:right;color:var(--muted);font-size:12px">Bal: ${m.bal}</span>
+    </div>`).join('')}`;
+  // Alerts
+  const crit=PRODUCTS.filter(p=>p.status==='critical'||p.status==='out'||p.status==='low');
+  document.getElementById('alertsArea').innerHTML=`<div style="background:rgba(255,79,110,.08);border:1px solid rgba(255,79,110,.2);border-radius:var(--r);padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--danger)">🚨 <strong>${PRODUCTS.filter(p=>p.status!=='ok').length} products</strong> need attention</div>`+
+    crit.map(p=>`<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+      <div style="flex:1"><div style="font-weight:500">${p.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">SKU: ${p.sku} · ${p.qty} units remaining (reorder at ${p.reorder})</div></div>
+      <span class="tag ${p.status==='out'?'t-red':p.status==='critical'?'t-red':'t-yellow'}">${p.status==='out'?'Out of Stock':p.status==='critical'?'Critical':'Low Stock'}</span>
+      <button class="btn primary" onclick="toast('PO raised for ${p.name} ✓')">Raise PO</button>
+    </div>`).join('');
+  // Valuation
+  let rows='',totCost=0,totMrp=0;
+  PRODUCTS.forEach(p=>{const tc=p.cost*p.qty,mv=p.sell*p.qty,m=p.sell?Math.round(((p.sell-p.cost)/p.sell)*100):0;totCost+=tc;totMrp+=mv;rows+=`<tr><td style="font-family:monospace;font-size:11px;color:var(--accent)">${p.sku}</td><td style="font-weight:500">${p.name}</td><td class="r">${p.qty}</td><td class="r">${fmt(p.cost)}</td><td class="r;font-weight:600">${fmt(tc)}</td><td class="r" style="color:var(--accent2)">${mv?fmt(mv):'—'}</td><td class="r" style="color:${m>30?'var(--accent2)':m>15?'var(--warn)':'var(--danger)'}">${p.sell?m+'%':'—'}</td></tr>`;});
+  document.getElementById('valTbl').innerHTML=`<thead><tr><th>SKU</th><th>Product</th><th class="r">Qty</th><th class="r">Cost</th><th class="r">Total Cost</th><th class="r">Market Value</th><th class="r">Margin</th></tr></thead><tbody>${rows}<tr style="border-top:2px solid var(--border)"><td colspan="4" style="font-weight:600">Total</td><td class="r" style="font-weight:700;color:var(--accent)">${fmt(totCost)}</td><td class="r" style="font-weight:700;color:var(--accent2)">${fmt(totMrp)}</td><td class="r" style="font-weight:700">${Math.round(((totMrp-totCost)/totMrp)*100)}%</td></tr></tbody>`;
+}
+function filterProds(){
+  const q=document.getElementById('prodSearch').value.toLowerCase();
+  const st=document.getElementById('stockStatusFilter').value;
+  const scol={ok:'var(--accent2)',low:'var(--warn)',critical:'var(--danger)',out:'var(--muted)'};
+  const slbl={ok:'In Stock',low:'Low Stock',critical:'Critical',out:'Out of Stock'};
+  const stag={ok:'t-green',low:'t-yellow',critical:'t-red',out:'t-muted'};
+  const list=PRODUCTS.filter(p=>(!q||p.name.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q))&&(!st||p.status===st));
+  document.getElementById('prodGrid').innerHTML=list.map(p=>{
+    const pct=p.status==='out'?0:Math.min(100,Math.round(p.qty/p.max*100));
+    const m=p.sell?Math.round(((p.sell-p.cost)/p.sell)*100):null;
+    return `<div class="stock-card ${p.status}" onclick="toast('Detailed view for ${p.sku} — coming in next update!')">
+      <div style="font-size:10px;color:var(--muted);font-family:monospace;margin-bottom:4px">${p.sku}</div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:2px;line-height:1.3">${p.name}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:10px">${p.cat}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <div style="background:var(--surface2);border-radius:6px;padding:7px 8px">
+          <div style="font-size:9px;color:var(--muted)">QTY</div>
+          <div style="font-size:16px;font-weight:600;font-family:var(--serif);color:${scol[p.status]}">${p.qty}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:6px;padding:7px 8px">
+          <div style="font-size:9px;color:var(--muted)">COST</div>
+          <div style="font-size:13px;font-weight:600">${fmt(p.cost)}</div>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--surface2);border-radius:10px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;border-radius:10px;background:${scol[p.status]};width:${pct}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="tag ${stag[p.status]}">${slbl[p.status]}</span>
+        <span style="font-size:10px;color:var(--muted)">${m!==null?m+'% margin':''}</span>
+      </div>
+    </div>`;}).join('');
+}
+
+/* ═══════════════════════ PAYROLL RENDER ═══════════════════════ */
+function renderPayroll(){
+  // Employees
+  document.getElementById('empGrid').innerHTML=EMPLOYEES.map((e,i)=>`
+    <div class="emp-card" onclick="showPayslip('${e.id}')">
+      <div class="emp-avatar" style="background:${AVATAR_COLORS[i%8]}">${initials(e.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="emp-name">${e.name}</div>
+        <div class="emp-dept">${e.desig} · ${e.dept}</div>
+        <div class="emp-salary">${fmt(grossSalary(e))}<span style="font-size:11px;font-family:var(--sans);color:var(--muted)">/mo</span></div>
+        <div class="emp-meta">
+          <span class="tag t-blue" style="font-size:9px">${e.id}</span>
+          <span class="tag t-green" style="font-size:9px">Active</span>
+          <span style="font-size:10px;color:var(--muted)">Net: ${fmt(netSalary(e))}</span>
+        </div>
+      </div>
+    </div>`).join('');
+  // Payroll table
+  document.getElementById('payrollTable').innerHTML=EMPLOYEES.map((e,i)=>`
+    <div style="display:grid;grid-template-columns:24px 1fr 80px 100px 80px 90px 90px 100px 80px;gap:0;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12.5px;align-items:center" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" checked style="cursor:pointer">
+      <div><div style="font-weight:500">${e.name}</div><div style="font-size:10px;color:var(--muted)">${e.dept}</div></div>
+      <div class="r">${fmt(e.basic)}</div>
+      <div class="r">${fmt(grossSalary(e))}</div>
+      <div class="r" style="color:var(--accent3)">${fmt(pfEmployee(e))}</div>
+      <div class="r" style="color:var(--accent3)">${fmt(esiEmployee(e))}</div>
+      <div class="r" style="color:var(--muted)">${fmt(profTax(e))}</div>
+      <div class="r" style="font-weight:600;color:var(--accent2)">${fmt(netSalary(e))}</div>
+      <div class="c"><span class="tag ${i<8?'t-green':'t-blue'}">${i<8?'Processed':'Pending'}</span></div>
+    </div>`).join('');
+  // Payslip list
+  document.getElementById('payslipList').innerHTML=`
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 100px 100px 100px 90px;gap:14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">
+      <span>Employee</span><span class="r">Gross</span><span class="r">Deductions</span><span class="r">Net Pay</span><span class="c">Action</span>
+    </div>
+    ${EMPLOYEES.map(e=>`<div class="list-row" style="display:grid;grid-template-columns:1fr 100px 100px 100px 90px;gap:14px">
+      <div><div style="font-weight:500">${e.name}</div><div style="font-size:11px;color:var(--muted)">${e.id} · ${e.dept}</div></div>
+      <div class="r" style="font-weight:500">${fmt(grossSalary(e))}</div>
+      <div class="r" style="color:var(--accent3)">${fmt(pfEmployee(e)+esiEmployee(e)+profTax(e))}</div>
+      <div class="r" style="font-weight:600;color:var(--accent2)">${fmt(netSalary(e))}</div>
+      <div class="c"><button class="btn" style="padding:4px 10px;font-size:11px" onclick="showPayslip('${e.id}')">📄 View</button></div>
+    </div>`).join('')}`;
+  // PF table
+  document.getElementById('pfTbl').innerHTML=`
+    <thead><tr><th>Employee</th><th class="r">Basic</th><th class="r">EE PF (12%)</th><th class="r">ER PF (12%)</th><th class="r">Total</th></tr></thead>
+    <tbody>${EMPLOYEES.map(e=>`<tr><td>${e.name}</td><td class="r">${fmt(e.basic)}</td><td class="r" style="color:var(--accent3)">${fmt(pfEmployee(e))}</td><td class="r" style="color:var(--accent3)">${fmt(pfEmployer(e))}</td><td class="r" style="font-weight:600">${fmt(pfEmployee(e)+pfEmployer(e))}</td></tr>`).join('')}
+    <tr style="border-top:2px solid var(--border)"><td style="font-weight:600">Total</td><td class="r">${fmt(EMPLOYEES.reduce((s,e)=>s+e.basic,0))}</td><td class="r" style="font-weight:700;color:var(--accent3)">${fmt(EMPLOYEES.reduce((s,e)=>s+pfEmployee(e),0))}</td><td class="r" style="font-weight:700;color:var(--accent3)">${fmt(EMPLOYEES.reduce((s,e)=>s+pfEmployer(e),0))}</td><td class="r" style="font-weight:700;color:var(--danger)">${fmt(EMPLOYEES.reduce((s,e)=>s+pfEmployee(e)+pfEmployer(e),0))}</td></tr></tbody>`;
+  // Payroll chart
+  const pdata=[{m:'Oct',v:340},{m:'Nov',v:352},{m:'Dec',v:365},{m:'Jan',v:358},{m:'Feb',v:372},{m:'Mar',v:384}];
+  const pmax=420;
+  document.getElementById('payrollChart').innerHTML=pdata.map(d=>`
+    <div class="bar-grp"><div class="bar-pair"><div class="bar inc" style="height:${Math.round(d.v/pmax*100)}px;background:var(--accent4)"></div></div><div class="bar-lbl">${d.m}</div></div>`).join('');
+  // Dept cost
+  const depts={};EMPLOYEES.forEach(e=>{depts[e.dept]=(depts[e.dept]||0)+grossSalary(e);});
+  document.getElementById('deptCostBreak').innerHTML=Object.entries(depts).sort((a,b)=>b[1]-a[1]).map(([d,v])=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="font-weight:500">${d}</span><span>${fmt(v)}</span></div>
+      <div style="height:6px;background:var(--surface2);border-radius:10px;overflow:hidden">
+        <div style="height:100%;border-radius:10px;background:var(--accent4);width:${Math.round(v/EMPLOYEES.reduce((s,e)=>s+grossSalary(e),0)*100)}%"></div>
+      </div>
+    </div>`).join('');
+  // Annual pay register
+  const months=['Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26'];
+  document.getElementById('annualPayTbl').innerHTML=`<thead><tr><th>Month</th><th class="r">Employees</th><th class="r">Gross</th><th class="r">PF</th><th class="r">ESI</th><th class="r">Net Paid</th><th class="c">Status</th></tr></thead>
+    <tbody>${months.map((m,i)=>{const gross=320000+(i*8000),pf=Math.round(gross*0.12),esi=Math.round(gross*0.0075),net=gross-pf-esi;return `<tr><td>${m}</td><td class="r">12</td><td class="r">${fmt(gross)}</td><td class="r" style="color:var(--accent3)">${fmt(pf)}</td><td class="r" style="color:var(--accent3)">${fmt(esi)}</td><td class="r" style="font-weight:600">${fmt(net)}</td><td class="c"><span class="tag ${i<11?'t-green':'t-orange'}">${i<11?'Paid':'Processing'}</span></td></tr>`;}).join('')}</tbody>`;
+}
+
+function showPayslip(empId){
+  const e=EMPLOYEES.find(x=>x.id===empId);if(!e)return;
+  const gross=grossSalary(e),pfe=pfEmployee(e),pfr=pfEmployer(e),esie=esiEmployee(e),pt=profTax(e),net=netSalary(e);
+  document.getElementById('payslipContent').innerHTML=`
+    <div class="payslip">
+      <div class="ps-hdr">
+        <div><div class="ps-co">BizLedger Pvt. Ltd.</div><div style="font-size:11px;color:#666;margin-top:4px;line-height:1.6">GSTIN: 19AABCB1234A1Z5<br>12, Park Street, Kolkata – 700016</div></div>
+        <div style="text-align:right"><div class="ps-badge">PAYSLIP</div><div style="font-size:11px;color:#666;margin-top:6px">March 2026</div></div>
+      </div>
+      <div class="ps-emp-info">
+        <div class="ps-field"><strong>${e.name}</strong></div>
+        <div class="ps-field">Employee ID: <strong>${e.id}</strong></div>
+        <div class="ps-field">Designation: <strong>${e.desig}</strong></div>
+        <div class="ps-field">Department: <strong>${e.dept}</strong></div>
+        <div class="ps-field">Pay Period: <strong>March 2026</strong></div>
+        <div class="ps-field">Payment Date: <strong>31 March 2026</strong></div>
+        <div class="ps-field">Working Days: <strong>26/26</strong></div>
+        <div class="ps-field">Bank: <strong>HDFC Bank</strong></div>
+      </div>
+      <div class="ps-tables">
+        <table class="ps-table">
+          <thead><tr><th>Earnings</th><th>Amount (₹)</th></tr></thead>
+          <tbody>
+            <tr><td>Basic Salary</td><td>${e.basic.toLocaleString('en-IN')}</td></tr>
+            <tr><td>HRA</td><td>${e.hra.toLocaleString('en-IN')}</td></tr>
+            <tr><td>Dearness Allowance</td><td>${e.da.toLocaleString('en-IN')}</td></tr>
+            <tr><td>Other Allowances</td><td>${e.other.toLocaleString('en-IN')}</td></tr>
+            <tr style="background:#f0f4ff"><td><strong>Gross Salary</strong></td><td><strong>${gross.toLocaleString('en-IN')}</strong></td></tr>
+          </tbody>
+        </table>
+        <table class="ps-table">
+          <thead><tr><th>Deductions</th><th>Amount (₹)</th></tr></thead>
+          <tbody>
+            <tr><td>PF (Employee 12%)</td><td>${pfe.toLocaleString('en-IN')}</td></tr>
+            <tr><td>ESI (Employee 0.75%)</td><td>${esie.toLocaleString('en-IN')}</td></tr>
+            <tr><td>Professional Tax</td><td>${pt.toLocaleString('en-IN')}</td></tr>
+            <tr><td>TDS (Income Tax)</td><td>0</td></tr>
+            <tr style="background:#fff0f3"><td><strong>Total Deductions</strong></td><td><strong>${(pfe+esie+pt).toLocaleString('en-IN')}</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="background:#f8faff;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#666">
+        <strong style="color:#1a1a2e">Employer Contributions:</strong> PF ₹${pfr.toLocaleString('en-IN')} · ESI ₹${esiEmployer(e).toLocaleString('en-IN')} &nbsp;|&nbsp; <strong>Total CTC:</strong> ₹${(gross+pfr+esiEmployer(e)).toLocaleString('en-IN')}
+      </div>
+      <div class="ps-net"><div><div class="ps-net-lbl">Net Salary Payable</div><div style="font-size:11px;color:#888">After all deductions</div></div><div class="ps-net-val">₹${net.toLocaleString('en-IN')}</div></div>
+      <div class="ps-footer">This is a computer-generated payslip and does not require a signature. · BizLedger ERP</div>
+    </div>`;
+  document.getElementById('payslipModal').classList.add('open');
+}
+
+function processPayroll(){toast('Payroll processed! ₹3,37,920 transferred to 12 employees ✓');}
+
+/* ═══════════════════════ ADD EMPLOYEE ═══════════════════════ */
+let empCount=EMPLOYEES.length;
+function openAddEmp(){
+  document.getElementById('ne_id').value='EMP-0'+String(empCount+1).padStart(2,'0');
+  document.getElementById('addEmpModal').classList.add('open');
+}
+function calcSalPreview(){
+  const b=parseFloat(document.getElementById('ne_basic').value)||0,h=parseFloat(document.getElementById('ne_hra').value)||0,d=parseFloat(document.getElementById('ne_da').value)||0,o=parseFloat(document.getElementById('ne_other').value)||0;
+  const g=b+h+d+o,pf=Math.round(b*0.12),esi=g<=21000?Math.round(g*0.0075):0,net=g-pf-esi;
+  document.getElementById('prevGross').textContent=fmt(g);
+  document.getElementById('prevPF').textContent=fmt(pf);
+  document.getElementById('prevESI').textContent=fmt(esi);
+  document.getElementById('prevNet').textContent=fmt(net);
+}
+function saveEmployee(){
+  const name=document.getElementById('ne_name').value.trim();
+  if(!name){toast('Enter employee name','e');return;}
+  const basic=parseFloat(document.getElementById('ne_basic').value)||0;
+  if(!basic){toast('Enter basic salary','e');return;}
+  EMPLOYEES.push({
+    id:document.getElementById('ne_id').value,name,
+    dept:document.getElementById('ne_dept').value,
+    desig:document.getElementById('ne_desig').value||'Employee',
+    basic,hra:parseFloat(document.getElementById('ne_hra').value)||0,
+    da:parseFloat(document.getElementById('ne_da').value)||0,
+    other:parseFloat(document.getElementById('ne_other').value)||0,status:'active'
+  });
+  empCount++;
+  closeModal('addEmpModal');
+  renderPayroll();
+  toast(`Employee "${name}" added ✓`);
+}
+
+/* ═══════════════════════ ADD PRODUCT ═══════════════════════ */
+let prodCount=PRODUCTS.length;
+function openAddProd(){
+  document.getElementById('np_sku').value='SKU-'+String(prodCount+1).padStart(3,'0');
+  document.getElementById('addProdModal').classList.add('open');
+}
+function prodMargin(){
+  const c=parseFloat(document.getElementById('np_cost').value)||0,s=parseFloat(document.getElementById('np_sell').value)||0;
+  document.getElementById('np_margin').value=s?Math.round(((s-c)/s)*100)+'%':'';
+}
+function saveProd(){
+  const name=document.getElementById('np_name').value.trim();
+  if(!name){toast('Enter product name','e');return;}
+  const qty=parseInt(document.getElementById('np_qty').value)||0;
+  PRODUCTS.push({sku:document.getElementById('np_sku').value,name,cat:document.getElementById('np_cat').value,qty,reorder:parseInt(document.getElementById('np_reorder').value)||10,max:500,cost:parseFloat(document.getElementById('np_cost').value)||0,sell:parseFloat(document.getElementById('np_sell').value)||0,status:qty===0?'out':qty<10?'low':'ok'});
+  prodCount++;closeModal('addProdModal');renderInventory();toast(`Product "${name}" added ✓`);
+}
+
+/* ═══════════════════════ REPORTS ═══════════════════════ */
+function renderReports(){
+  document.getElementById('plTbl').innerHTML=`<thead><tr><th>Particulars</th><th class="r">Amount (₹)</th></tr></thead><tbody>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase">Income</td></tr>
+    <tr><td style="padding-left:20px">Sales Revenue</td><td class="r">${fmt(124500)}</td></tr>
+    <tr><td style="padding-left:20px">Service Income</td><td class="r">${fmt(18000)}</td></tr>
+    <tr><td style="padding-left:20px;color:var(--muted)">Other Income</td><td class="r" style="color:var(--muted)">${fmt(3200)}</td></tr>
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total Income</td><td class="r" style="font-weight:700;color:var(--accent2)">${fmt(145700)}</td></tr>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase;padding-top:14px">Expenses</td></tr>
+    <tr><td style="padding-left:20px">Cost of Goods Sold</td><td class="r">${fmt(48000)}</td></tr>
+    <tr><td style="padding-left:20px">Salaries & Wages</td><td class="r">${fmt(337920)}</td></tr>
+    <tr><td style="padding-left:20px">Rent & Utilities</td><td class="r">${fmt(24000)}</td></tr>
+    <tr><td style="padding-left:20px">Office Supplies</td><td class="r">${fmt(3280)}</td></tr>
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total Expenses</td><td class="r" style="font-weight:700;color:var(--danger)">${fmt(413200)}</td></tr>
+    <tr style="border-top:2px solid var(--border)"><td style="font-weight:700;font-size:14px">Net Profit / (Loss)</td><td class="r" style="font-weight:700;font-size:14px;color:var(--accent2)">${fmt(145700-413200<0?-(413200-145700):145700-413200)} ${145700-413200<0?'(Loss)':''}</td></tr>
+  </tbody>`;
+  document.getElementById('bsTbl').innerHTML=`<thead><tr><th>Particulars</th><th class="r">Amount (₹)</th></tr></thead><tbody>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase">Assets</td></tr>
+    <tr><td style="padding-left:20px">Cash & Bank</td><td class="r">${fmt(482600)}</td></tr>
+    <tr><td style="padding-left:20px">Accounts Receivable</td><td class="r">${fmt(93500)}</td></tr>
+    <tr><td style="padding-left:20px">Inventory / Stock</td><td class="r">${fmt(145000)}</td></tr>
+    <tr><td style="padding-left:20px">Fixed Assets</td><td class="r">${fmt(205000)}</td></tr>
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total Assets</td><td class="r" style="font-weight:700;color:var(--accent)">${fmt(926100)}</td></tr>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase;padding-top:14px">Liabilities & Equity</td></tr>
+    <tr><td style="padding-left:20px">Accounts Payable</td><td class="r">${fmt(41000)}</td></tr>
+    <tr><td style="padding-left:20px">GST Payable</td><td class="r">${fmt(18340)}</td></tr>
+    <tr><td style="padding-left:20px">PF & ESI Payable</td><td class="r">${fmt(46080)}</td></tr>
+    <tr><td style="padding-left:20px">Owner's Capital</td><td class="r">${fmt(750000)}</td></tr>
+    <tr><td style="padding-left:20px">Retained Earnings</td><td class="r">${fmt(70680)}</td></tr>
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total L + E</td><td class="r" style="font-weight:700;color:var(--accent)">${fmt(926100)}</td></tr>
+  </tbody>`;
+}
+
+/* ═══════════════════════ INVOICES ═══════════════════════ */
+function renderAllInvoices(){
+  const tagC={paid:'t-green',unpaid:'t-red',draft:'t-blue',partial:'t-orange'};
+  document.getElementById('allInvoicesCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:14px;font-weight:500">All Invoices <span style="color:var(--muted);font-weight:400;font-size:12px">· ${INVOICES.length} total</span></div>
+      <input class="fi-sm" placeholder="🔍  Search..." style="width:200px">
+    </div>
+    ${INVOICES.map(i=>`<div class="list-row">
+      <span style="font-family:monospace;font-size:11px;color:var(--muted);width:72px">${i.no}</span>
+      <div style="flex:1"><div style="font-weight:500">${i.party}</div><div style="font-family:monospace;font-size:11px;color:var(--muted)">${i.gstin}</div></div>
+      <span style="width:100px;font-size:12px;color:var(--muted)">${i.date}</span>
+      <span style="width:80px;text-align:right;color:var(--accent3);font-size:12px">${fmt(i.tax)} tax</span>
+      <span style="width:110px;font-weight:600;text-align:right">${fmt(i.total)}</span>
+      <span class="tag ${tagC[i.status]}">${i.status.charAt(0).toUpperCase()+i.status.slice(1)}</span>
+    </div>`).join('')}`;
+}
+
+/* ═══════════════════════ MODALS ═══════════════════════ */
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+/* ═══════════════════════ TOAST ═══════════════════════ */
+function toast(msg,type){
+  const el=document.getElementById('toastEl');
+  el.textContent=msg;
+  el.style.background=type==='e'?'var(--danger)':'var(--accent2)';
+  el.style.color=type==='e'?'#fff':'#0a1a14';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+/* ═══════════════════════ BOOT ═══════════════════════ */
+renderDashboard();
+renderCOA();renderJEList();renderTrialBalance();populateLedSel();
+renderGST();addGstItem();
+renderInventory();
+renderPayroll();
+renderReports();
+renderAllInvoices();
+</script>
+<script>
+const API = "https://bizledger-erp-production.up.railway.app";
+
+// Example: fetch dashboard data
+fetch(API + "/dashboard")
+  .then(res => res.json())
+  .then(data => {
+    console.log("Backend data:", data);
+
+    // Update values (adjust class names if needed)
+    document.querySelectorAll("h3")[0].innerText = "₹" + data.cash;
+    document.querySelectorAll("h3")[1].innerText = "₹" + data.revenue;
+    document.querySelectorAll("h3")[2].innerText = "₹" + data.expenses;
+    document.querySelectorAll("h3")[3].innerText = "₹" + data.gst;
+  })
+  .catch(err => console.error("Error connecting backend:", err));
+</script>
+</body>
+</html>
