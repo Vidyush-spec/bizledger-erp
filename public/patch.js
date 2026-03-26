@@ -320,12 +320,17 @@ window.addEventListener('load',async function(){
     const token=localStorage.getItem('bl_token');
     const res=await fetch(BL_BACKEND+'/invoices',{headers:{'Authorization':'Bearer '+token}});
     const invoices=await res.json();
-    if(invoices&&invoices.length){
+  if(invoices&&invoices.length){
+      // Replace ALL hardcoded invoices with real DB data
+      INVOICES.length=0;
       invoices.forEach(inv=>{
-        if(!INVOICES.find(x=>x.no===inv.invoiceNo)){
-          INVOICES.unshift({no:inv.invoiceNo,dbId:inv.id,party:inv.customerName,gstin:inv.customerGstin||'',date:inv.invoiceDate?.slice(0,10),tax:Number(inv.cgst)+Number(inv.sgst)+Number(inv.igst),total:Number(inv.grandTotal),status:inv.status?.toLowerCase()||'posted'});
-        }
+        INVOICES.push({no:inv.invoiceNo,dbId:inv.id,party:inv.customerName,gstin:inv.customerGstin||'',date:inv.invoiceDate?.slice(0,10),tax:Number(inv.cgst)+Number(inv.sgst)+Number(inv.igst),total:Number(inv.grandTotal),status:inv.status?.toLowerCase()||'posted'});
       });
+      // Apply persisted paid status
+      const paidList=JSON.parse(localStorage.getItem('bl_paid_invoices')||'[]');
+      INVOICES.forEach(inv=>{if(paidList.includes(inv.no))inv.status='paid';});
+      renderAllInvoices();
+      if(typeof renderGST==='function')renderGST();
       renderAllInvoices();
     }
   }catch(e){console.warn('Invoices:',e.message);}
@@ -387,3 +392,27 @@ window.renderGST = function(){
       <td><span class="tag ${r.eligible==='full'?'t-green':r.eligible==='partial'?'t-orange':'t-red'}">${r.eligible==='full'?'✓ Eligible':r.eligible==='partial'?'~ Partial':'✗ Blocked'}</span></td>
     </tr>`).join('')}</tbody>`;
 };
+window.addEventListener('load',function(){
+  if(typeof INVOICES==='undefined')return;
+  setTimeout(function(){
+    const postedInvoices=INVOICES.filter(i=>i.status!=='draft'&&i.status!=='cancelled');
+    const outputTax=postedInvoices.reduce((s,i)=>s+(i.tax||0),0);
+    const taxableValue=postedInvoices.reduce((s,i)=>s+((i.total||0)-(i.tax||0)),0);
+    const cgst=outputTax/2;
+    const sgst=outputTax/2;
+    const itcTotal=typeof ITC_DATA!=='undefined'?ITC_DATA.reduce((s,r)=>s+(r.cgst+r.sgst+r.igst),0):4070;
+    const netPayable=Math.max(0,outputTax-itcTotal);
+    const allDivs=document.querySelectorAll('#page-gst .panel.active div');
+    document.querySelectorAll('#page-gst .panel div').forEach(el=>{
+      const t=el.textContent.trim();
+      if(t==='₹11,205'&&el.style.fontSize==='20px'){
+        const lbl=el.previousElementSibling?.textContent?.trim();
+        if(lbl==='CGST')el.textContent=fmt(cgst);
+        if(lbl==='SGST')el.textContent=fmt(sgst);
+      }
+      if(t==='₹22,410')el.textContent=fmt(outputTax);
+      if(t==='₹18,340'&&el.parentElement?.textContent?.includes('Net Payable'))el.textContent=fmt(netPayable);
+      if(t==='−₹4,070'||t==='-₹4,070')el.textContent='−'+fmt(itcTotal);
+    });
+  },500);
+});
