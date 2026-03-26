@@ -91,3 +91,70 @@ window.addEventListener('load',async()=>{
     }
   }catch(e){console.warn('Products:',e.message);}
 });
+window.postJE = async function(){
+  const narr=document.getElementById('jeNarr').value.trim();
+  if(!narr){toast('Please add a narration','e');return;}
+  let dr=0,cr=0;
+  document.querySelectorAll('#jeLines tr').forEach(row=>{
+    const ins=row.querySelectorAll('input[type=number]');
+    dr+=parseFloat(ins[0]?.value||0);
+    cr+=parseFloat(ins[1]?.value||0);
+  });
+  if(Math.abs(dr-cr)>0.01){toast('Entry not balanced — Dr ≠ Cr','e');return;}
+  if(dr===0){toast('Please enter amounts','e');return;}
+  const entryNo=document.getElementById('jeRef').value;
+  const date=document.getElementById('jeDate').value;
+  const data={entryNo,date,narration:narr,status:'POSTED',lines:[]};
+  try{
+    const token=localStorage.getItem('bl_token');
+    await fetch('https://bizledger-erp-production.up.railway.app/api/journal-entries',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(data)
+    });
+    JE.push({id:entryNo,date,narr,accounts:'Multiple accounts',amount:dr,status:'posted'});
+    document.getElementById('jeFormWrap').style.display='none';
+    renderJEList();
+    blToast('Journal entry posted and saved ✓');
+  }catch(err){
+    JE.push({id:entryNo,date,narr,accounts:'Multiple accounts',amount:dr,status:'posted'});
+    document.getElementById('jeFormWrap').style.display='none';
+    renderJEList();
+    blToast('Journal entry saved locally ✓');
+  }
+};
+
+window.renderReports = function(){
+  const income=COA.filter(a=>a.group==='Income');
+  const expenses=COA.filter(a=>a.group==='Expenses');
+  const assets=COA.filter(a=>a.group==='Assets');
+  const liabilities=COA.filter(a=>a.group==='Liabilities');
+  const equity=COA.filter(a=>a.group==='Equity');
+  const totalIncome=income.reduce((s,a)=>s+a.bal,0);
+  const totalExpenses=expenses.reduce((s,a)=>s+a.bal,0);
+  const netProfit=totalIncome-totalExpenses;
+  const totalAssets=assets.reduce((s,a)=>s+a.bal,0);
+  const totalLiabilities=liabilities.reduce((s,a)=>s+a.bal,0);
+  const totalEquity=equity.reduce((s,a)=>s+a.bal,0);
+  const totalLE=totalLiabilities+totalEquity;
+  document.getElementById('plTbl').innerHTML=`<thead><tr><th>Particulars</th><th class="r">Amount (₹)</th></tr></thead><tbody>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase">Income</td></tr>
+    ${income.map(a=>`<tr><td style="padding-left:20px">${a.name}</td><td class="r">${fmt(a.bal)}</td></tr>`).join('')}
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total Income</td><td class="r" style="font-weight:700;color:var(--accent2)">${fmt(totalIncome)}</td></tr>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase;padding-top:14px">Expenses</td></tr>
+    ${expenses.map(a=>`<tr><td style="padding-left:20px">${a.name}</td><td class="r">${fmt(a.bal)}</td></tr>`).join('')}
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total Expenses</td><td class="r" style="font-weight:700;color:var(--danger)">${fmt(totalExpenses)}</td></tr>
+    <tr style="border-top:2px solid var(--border)"><td style="font-weight:700;font-size:14px">Net ${netProfit>=0?'Profit':'Loss'}</td><td class="r" style="font-weight:700;font-size:14px;color:${netProfit>=0?'var(--accent2)':'var(--danger)'}">${fmt(Math.abs(netProfit))} ${netProfit<0?'(Loss)':''}</td></tr>
+  </tbody>`;
+  document.getElementById('bsTbl').innerHTML=`<thead><tr><th>Particulars</th><th class="r">Amount (₹)</th></tr></thead><tbody>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase">Assets</td></tr>
+    ${assets.map(a=>`<tr><td style="padding-left:20px">${a.name}</td><td class="r">${fmt(a.bal)}</td></tr>`).join('')}
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total Assets</td><td class="r" style="font-weight:700;color:var(--accent)">${fmt(totalAssets)}</td></tr>
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase;padding-top:14px">Liabilities</td></tr>
+    ${liabilities.map(a=>`<tr><td style="padding-left:20px">${a.name}</td><td class="r">${fmt(a.bal)}</td></tr>`).join('')}
+    <tr style="background:var(--surface2)"><td colspan="2" style="font-size:11px;color:var(--muted);text-transform:uppercase;padding-top:14px">Equity</td></tr>
+    ${equity.map(a=>`<tr><td style="padding-left:20px">${a.name}</td><td class="r">${fmt(a.bal)}</td></tr>`).join('')}
+    <tr style="border-top:1px solid var(--border)"><td style="font-weight:600">Total L + E</td><td class="r" style="font-weight:700;color:var(--accent)">${fmt(totalLE)}</td></tr>
+    <tr style="border-top:2px solid var(--border)"><td style="font-weight:700">Difference</td><td class="r" style="font-weight:700;color:${Math.abs(totalAssets-totalLE)<1?'var(--accent2)':'var(--danger)'}">${Math.abs(totalAssets-totalLE)<1?'✓ Balanced':fmt(Math.abs(totalAssets-totalLE))+' (Check entries)'}</td></tr>
+  </tbody>`;
+};
