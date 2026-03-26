@@ -283,3 +283,146 @@ window.addEventListener('load',async function(){
   }catch(e){console.warn('Invoices:',e.message);}
 });
 window.addEventListener('load',async function(){if(typeof INVOICES==='undefined')return;try{const token=localStorage.getItem('bl_token');const res=await fetch('https://bizledger-erp-production.up.railway.app/api/invoices',{headers:{'Authorization':'Bearer '+token}});const invoices=await res.json();if(invoices&&invoices.length){invoices.forEach(inv=>{if(!INVOICES.find(x=>x.no===inv.invoiceNo)){INVOICES.unshift({no:inv.invoiceNo,party:inv.customerName,gstin:inv.customerGstin||'',date:inv.invoiceDate?.slice(0,10),tax:Number(inv.cgst)+Number(inv.sgst)+Number(inv.igst),total:Number(inv.grandTotal),status:inv.status?.toLowerCase()||'posted'});}});renderAllInvoices();}}catch(e){console.warn('Invoices:',e.message);}});
+// ── SETTINGS — Save company details to localStorage ──────────────
+document.addEventListener('DOMContentLoaded',function(){
+  const s=JSON.parse(localStorage.getItem('bl_company_settings')||'{}');
+  const inputs=document.querySelectorAll('#page-settings input.fi, #page-settings textarea.fi');
+  if(inputs[0]&&s.name)inputs[0].value=s.name;
+  if(inputs[1]&&s.gstin)inputs[1].value=s.gstin;
+  if(inputs[2]&&s.pan)inputs[2].value=s.pan;
+  if(inputs[4]&&s.address)inputs[4].value=s.address;
+  const saveBtn=document.querySelector('#page-settings .btn.success');
+  if(saveBtn){
+    saveBtn.onclick=function(){
+      const inputs2=document.querySelectorAll('#page-settings input.fi, #page-settings textarea.fi');
+      const data={name:inputs2[0]?.value||'',gstin:inputs2[1]?.value||'',pan:inputs2[2]?.value||'',address:inputs2[4]?.value||''};
+      localStorage.setItem('bl_company_settings',JSON.stringify(data));
+      blToast('Company details saved ✓');
+    };
+  }
+});
+
+// ── MARK INVOICE AS PAID ─────────────────────────────────────────
+window.renderAllInvoices = function(){
+  const tagC={paid:'t-green',unpaid:'t-red',draft:'t-blue',partial:'t-orange',posted:'t-green',cancelled:'t-muted'};
+  document.getElementById('allInvoicesCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:14px;font-weight:500">All Invoices <span style="color:var(--muted);font-weight:400;font-size:12px">· ${INVOICES.length} total</span></div>
+      <input class="fi-sm" placeholder="🔍 Search..." style="width:200px" oninput="blSearchInvoices(this.value)">
+    </div>
+    <div id="invoiceListBody">
+    ${INVOICES.map((i,idx)=>`<div class="list-row" id="inv-row-${idx}">
+      <span style="font-family:monospace;font-size:11px;color:var(--muted);width:72px">${i.no}</span>
+      <div style="flex:1"><div style="font-weight:500">${i.party}</div><div style="font-family:monospace;font-size:11px;color:var(--muted)">${i.gstin||''}</div></div>
+      <span style="width:100px;font-size:12px;color:var(--muted)">${i.date||''}</span>
+      <span style="width:80px;text-align:right;color:var(--accent3);font-size:12px">${fmt(i.tax||0)} tax</span>
+      <span style="width:110px;font-weight:600;text-align:right">${fmt(i.total||0)}</span>
+      <span class="tag ${tagC[i.status]||'t-blue'}">${i.status?.charAt(0).toUpperCase()+i.status?.slice(1)||'Draft'}</span>
+      ${i.status!=='paid'?`<button class="btn success" style="padding:4px 10px;font-size:11px" onclick="blMarkPaid(${idx})">Mark Paid</button>`:'<span style="width:80px"></span>'}
+      <button class="btn" style="padding:4px 10px;font-size:11px" onclick="blPrintInvoice(${idx})">🖨 Print</button>
+    </div>`).join('')}
+    </div>`;
+};
+
+window.blSearchInvoices = function(q){
+  const rows=document.querySelectorAll('#invoiceListBody .list-row');
+  rows.forEach(row=>{
+    row.style.display=row.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+};
+
+window.blMarkPaid = async function(idx){
+  const inv=INVOICES[idx];
+  if(!inv)return;
+  try{
+    const token=localStorage.getItem('bl_token');
+    if(inv.id){
+      await fetch('https://bizledger-erp-production.up.railway.app/api/invoices/'+inv.id,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({status:'PAID'})
+      });
+    }
+    INVOICES[idx].status='paid';
+    renderAllInvoices();
+    blToast('Invoice '+inv.no+' marked as paid ✓');
+  }catch(err){
+    INVOICES[idx].status='paid';
+    renderAllInvoices();
+    blToast('Invoice marked as paid ✓');
+  }
+};
+
+// ── INVOICE PDF PRINT ────────────────────────────────────────────
+window.blPrintInvoice = function(idx){
+  const inv=INVOICES[idx];
+  if(!inv)return;
+  const company=JSON.parse(localStorage.getItem('bl_company_settings')||'{}');
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.no}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:800px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;margin-bottom:30px}
+    .company-name{font-size:24px;font-weight:700;color:#2563eb}
+    .invoice-title{font-size:32px;font-weight:300;color:#888;text-align:right}
+    .invoice-no{font-size:14px;color:#666;text-align:right}
+    .divider{border:none;border-top:2px solid #e5e7eb;margin:20px 0}
+    .parties{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-bottom:30px}
+    .label{font-size:11px;text-transform:uppercase;color:#888;margin-bottom:4px}
+    .value{font-size:14px;font-weight:500}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    th{background:#f3f4f6;padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;color:#666}
+    td{padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:13px}
+    .totals{margin-left:auto;width:280px}
+    .total-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+    .grand-total{display:flex;justify-content:space-between;padding:10px 0;font-size:16px;font-weight:700;border-top:2px solid #111}
+    .status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:${inv.status==='paid'?'#dcfce7':'#fef3c7'};color:${inv.status==='paid'?'#166534':'#92400e'}}
+    .footer{margin-top:40px;text-align:center;font-size:11px;color:#aaa}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div>
+      <div class="company-name">${company.name||'BizLedger Pvt. Ltd.'}</div>
+      <div style="font-size:12px;color:#666;margin-top:4px">GSTIN: ${company.gstin||'19AABCB1234A1Z5'}</div>
+      <div style="font-size:12px;color:#666">PAN: ${company.pan||'AABCB1234A'}</div>
+      <div style="font-size:12px;color:#666;margin-top:4px">${company.address||'12, Park Street, Kolkata – 700016'}</div>
+    </div>
+    <div>
+      <div class="invoice-title">INVOICE</div>
+      <div class="invoice-no">${inv.no}</div>
+      <div class="invoice-no" style="margin-top:4px">Date: ${inv.date||new Date().toISOString().slice(0,10)}</div>
+      <div style="margin-top:8px"><span class="status-badge">${inv.status?.toUpperCase()||'DRAFT'}</span></div>
+    </div>
+  </div>
+  <hr class="divider">
+  <div class="parties">
+    <div>
+      <div class="label">Bill To</div>
+      <div class="value">${inv.party}</div>
+      <div style="font-size:12px;color:#666;margin-top:4px">GSTIN: ${inv.gstin||'N/A'}</div>
+    </div>
+    <div>
+      <div class="label">Invoice Details</div>
+      <div style="font-size:13px">Invoice No: <strong>${inv.no}</strong></div>
+      <div style="font-size:13px">Date: <strong>${inv.date||''}</strong></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Services / Goods</td><td style="text-align:right">₹${((inv.total||0)-(inv.tax||0)).toLocaleString('en-IN')}</td></tr>
+    </tbody>
+  </table>
+  <div class="totals">
+    <div class="total-row"><span>Subtotal</span><span>₹${((inv.total||0)-(inv.tax||0)).toLocaleString('en-IN')}</span></div>
+    <div class="total-row"><span>Tax (GST)</span><span>₹${(inv.tax||0).toLocaleString('en-IN')}</span></div>
+    <div class="grand-total"><span>Grand Total</span><span>₹${(inv.total||0).toLocaleString('en-IN')}</span></div>
+  </div>
+  <div class="footer">
+    <p>Thank you for your business!</p>
+    <p>Generated by BizLedger ERP · ${company.name||'BizLedger Pvt. Ltd.'}</p>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+};
