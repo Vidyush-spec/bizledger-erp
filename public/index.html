@@ -387,15 +387,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
         <div class="card">
           <div class="card-title" style="margin-bottom:14px">Tax Breakup — March 2026</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">CGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent)">₹11,205</div></div>
-            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">SGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent4)">₹11,205</div></div>
-            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">IGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent3)">₹0</div></div>
-            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">ITC</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent2)">₹4,070</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">CGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent)" id="gst-cgst-val">₹11,205</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">SGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent4)" id="gst-sgst-val">₹11,205</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">IGST</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent3)" id="gst-igst-val">₹0</div></div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:4px">ITC</div><div style="font-size:20px;font-family:var(--serif);color:var(--accent2)" id="gst-itc-val">₹4,070</div></div>
           </div>
           <div style="background:var(--surface2);border-radius:8px;padding:14px">
-            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output Tax</span><span style="font-weight:600">₹22,410</span></div>
-            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Less: ITC</span><span style="font-weight:600;color:var(--accent2)">−₹4,070</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700"><span>Net Payable</span><span style="color:var(--accent3)">₹18,340</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output Tax</span><span style="font-weight:600" id="gst-output-val">₹22,410</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Less: ITC</span><span style="font-weight:600;color:var(--accent2)" id="gst-itc-deduct-val">−₹4,070</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700"><span>Net Payable</span><span style="color:var(--accent3)" id="gst-net-val">₹18,340</span></div>
           </div>
         </div>
         <div class="card">
@@ -677,8 +677,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
       <div style="color:var(--muted);margin-bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em">Salary Preview</div>
       <div style="display:flex;gap:20px">
         <div><div style="font-size:10px;color:var(--muted)">Gross</div><div id="prevGross" style="font-family:var(--serif);font-size:18px">₹0</div></div>
-        <div><div style="font-size:10px;color:var(--muted)">PF (Employee 12%)</div><div id="prevPF" style="font-size:15px;color:var(--accent3)">₹0</div></div>
-        <div><div style="font-size:10px;color:var(--muted)">ESI (0.75%)</div><div id="prevESI" style="font-size:15px;color:var(--accent3)">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">PF (Employee 12%)</div><div id="prevPF" style="font-size:15px;color:var(--accent3)" id="gst-igst-val">₹0</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">ESI (0.75%)</div><div id="prevESI" style="font-size:15px;color:var(--accent3)" id="gst-igst-val">₹0</div></div>
         <div><div style="font-size:10px;color:var(--muted)">Net Salary</div><div id="prevNet" style="font-family:var(--serif);font-size:18px;color:var(--accent2)">₹0</div></div>
       </div>
     </div>
@@ -919,7 +919,7 @@ function renderDashboard(){
     </div>`).join('')+'<div style="margin-top:10px;text-align:center"><button class="btn" style="width:100%;justify-content:center" onclick="nav(\'inventory\')">View all alerts</button></div>';
   // GST
   document.getElementById('dashGST').innerHTML=`
-    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output GST</span><span style="font-weight:600">₹22,410</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output GST</span><span style="font-weight:600" id="gst-output-val">₹22,410</span></div>
     <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">ITC Available</span><span style="color:var(--accent2);font-weight:600">₹4,070</span></div>
     <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="font-weight:600">Net Payable</span><span style="color:var(--accent3);font-weight:700">₹18,340</span></div>
     <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:12px"><span style="color:var(--muted)">GSTR-3B</span><span class="tag t-orange">Pending</span></div>`;

@@ -416,3 +416,31 @@ window.addEventListener('load',function(){
     });
   },500);
 });
+function blUpdateGSTOverview(){
+  if(typeof INVOICES==='undefined')return;
+  const posted=INVOICES.filter(i=>i.status!=='draft'&&i.status!=='cancelled');
+  const outputTax=posted.reduce((s,i)=>s+(i.tax||0),0);
+  const cgst=outputTax/2;
+  const sgst=outputTax/2;
+  const itcTotal=typeof ITC_DATA!=='undefined'?ITC_DATA.reduce((s,r)=>s+(r.cgst+r.sgst+r.igst),0):0;
+  const netPayable=Math.max(0,outputTax-itcTotal);
+  const pending=INVOICES.filter(i=>i.status==='unpaid'||i.status==='posted'||i.status==='partial').length;
+  if(document.getElementById('gst-cgst-val'))document.getElementById('gst-cgst-val').textContent=fmt(cgst);
+  if(document.getElementById('gst-sgst-val'))document.getElementById('gst-sgst-val').textContent=fmt(sgst);
+  if(document.getElementById('gst-igst-val'))document.getElementById('gst-igst-val').textContent=fmt(0);
+  if(document.getElementById('gst-itc-val'))document.getElementById('gst-itc-val').textContent=fmt(itcTotal);
+  if(document.getElementById('gst-output-val'))document.getElementById('gst-output-val').textContent=fmt(outputTax);
+  if(document.getElementById('gst-itc-deduct-val'))document.getElementById('gst-itc-deduct-val').textContent='−'+fmt(itcTotal);
+  if(document.getElementById('gst-net-val'))document.getElementById('gst-net-val').textContent=fmt(netPayable);
+  document.querySelectorAll('.kpi-val').forEach(el=>{
+    const lbl=el.previousElementSibling?.textContent?.trim();
+    if(lbl==='Output GST (Mar)')el.textContent=fmt(outputTax);
+    if(lbl==='Net GST Payable')el.textContent=fmt(netPayable);
+    if(lbl==='Input Tax Credit')el.textContent=fmt(itcTotal);
+    if(lbl==='Pending Invoices')el.textContent=pending;
+  });
+}
+window.addEventListener('load',function(){setTimeout(blUpdateGSTOverview,1000);});
+document.addEventListener('click',function(e){
+  if(e.target.closest('[onclick*="gst"]')||e.target.closest('.tab'))setTimeout(blUpdateGSTOverview,200);
+});
