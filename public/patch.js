@@ -257,3 +257,29 @@ document.addEventListener('DOMContentLoaded',function(){
     if(d.gst&&cards[3])cards[3].textContent='₹'+Number(d.gst).toLocaleString('en-IN');
   }
 });
+window.addEventListener('load',async function(){
+  try{
+    const token=localStorage.getItem('bl_token');
+    const res=await fetch('https://bizledger-erp-production.up.railway.app/api/invoices',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    const invoices=await res.json();
+    if(invoices&&invoices.length){
+      invoices.forEach(inv=>{
+        if(!INVOICES.find(x=>x.no===inv.invoiceNo)){
+          INVOICES.unshift({
+            no:inv.invoiceNo,
+            party:inv.customerName,
+            gstin:inv.customerGstin||'',
+            date:inv.invoiceDate?.slice(0,10),
+            tax:Number(inv.cgst)+Number(inv.sgst)+Number(inv.igst),
+            total:Number(inv.grandTotal),
+            status:inv.status?.toLowerCase()||'posted'
+          });
+        }
+      });
+      renderAllInvoices();
+    }
+  }catch(e){console.warn('Invoices:',e.message);}
+});
+window.addEventListener('load',async function(){try{const token=localStorage.getItem('bl_token');const res=await fetch('https://bizledger-erp-production.up.railway.app/api/invoices',{headers:{'Authorization':'Bearer '+token}});const invoices=await res.json();if(invoices&&invoices.length){invoices.forEach(inv=>{if(!INVOICES.find(x=>x.no===inv.invoiceNo)){INVOICES.unshift({no:inv.invoiceNo,party:inv.customerName,gstin:inv.customerGstin||'',date:inv.invoiceDate?.slice(0,10),tax:Number(inv.cgst)+Number(inv.sgst)+Number(inv.igst),total:Number(inv.grandTotal),status:inv.status?.toLowerCase()||'posted'});}});renderAllInvoices();}}catch(e){console.warn('Invoices:',e.message);}});
