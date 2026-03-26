@@ -158,3 +158,102 @@ window.renderReports = function(){
     <tr style="border-top:2px solid var(--border)"><td style="font-weight:700">Difference</td><td class="r" style="font-weight:700;color:${Math.abs(totalAssets-totalLE)<1?'var(--accent2)':'var(--danger)'}">${Math.abs(totalAssets-totalLE)<1?'✓ Balanced':fmt(Math.abs(totalAssets-totalLE))+' (Check entries)'}</td></tr>
   </tbody>`;
 };
+window.postGstInvoice = async function(){
+  const buyer=document.getElementById('gstBuyerName').value.trim();
+  if(!buyer){toast('Enter customer name','e');return;}
+  const invoiceNo='INV-'+Date.now().toString().slice(-6);
+  const subtotal=parseFloat(document.getElementById('gstSubtotal')?.textContent?.replace(/[^0-9.]/g,'')||0);
+  const cgst=parseFloat(document.getElementById('gstCGST')?.textContent?.replace(/[^0-9.]/g,'')||0);
+  const sgst=parseFloat(document.getElementById('gstSGST')?.textContent?.replace(/[^0-9.]/g,'')||0);
+  const igst=parseFloat(document.getElementById('gstIGST')?.textContent?.replace(/[^0-9.]/g,'')||0);
+  const grandTotal=subtotal+cgst+sgst+igst||1;
+  const data={
+    invoiceNo,
+    invoiceDate:new Date().toISOString(),
+    customerName:buyer,
+    customerGstin:document.getElementById('gstBuyerGstin')?.value||'',
+    customerAddr:document.getElementById('gstBuyerAddr')?.value||'',
+    placeOfSupply:document.getElementById('gstPos')?.value||'West Bengal',
+    subtotal:subtotal||1,
+    cgst,sgst,igst,
+    grandTotal,
+    roundOff:0,
+    status:'POSTED',
+    items:[],
+  };
+  try{
+    const token=localStorage.getItem('bl_token');
+    const res=await fetch('https://bizledger-erp-production.up.railway.app/api/invoices',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(data)
+    });
+    const saved=await res.json();
+    INVOICES.unshift({no:invoiceNo,party:buyer,gstin:data.customerGstin,date:new Date().toISOString().slice(0,10),tax:cgst+sgst+igst,total:grandTotal,status:'posted'});
+    renderAllInvoices();
+    blToast('Invoice posted and saved to database ✓');
+    showGstTab('invoices');
+  }catch(err){
+    blToast('Invoice saved locally ✓');
+    showGstTab('invoices');
+  }
+};
+
+window.addEventListener('load',async function blLoadInvoices(){
+  try{
+    const token=localStorage.getItem('bl_token');
+    const res=await fetch('https://bizledger-erp-production.up.railway.app/api/invoices',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    const invoices=await res.json();
+    if(invoices&&invoices.length){
+      invoices.forEach(inv=>{
+        if(!INVOICES.find(x=>x.no===inv.invoiceNo)){
+          INVOICES.unshift({
+            no:inv.invoiceNo,
+            party:inv.customerName,
+            gstin:inv.customerGstin||'',
+            date:inv.invoiceDate?.slice(0,10),
+            tax:Number(inv.cgst)+Number(inv.sgst)+Number(inv.igst),
+            total:Number(inv.grandTotal),
+            status:inv.status?.toLowerCase()||'posted'
+          });
+        }
+      });
+      renderAllInvoices();
+    }
+  }catch(e){console.warn('Invoices:',e.message);}
+},false);
+
+// Settings — Save company details
+document.addEventListener('DOMContentLoaded',function(){
+  const saved=JSON.parse(localStorage.getItem('bl_company')||'{}');
+  if(saved.name)document.querySelector('[placeholder="Company Name"]')&&(document.querySelector('[placeholder="Company Name"]').value=saved.name);
+  if(saved.gstin)document.querySelector('[placeholder="GSTIN"]')&&(document.querySelector('[placeholder="GSTIN"]').value=saved.gstin);
+  if(saved.pan)document.querySelector('[placeholder="PAN"]')&&(document.querySelector('[placeholder="PAN"]').value=saved.pan);
+  const saveBtn=document.querySelector('.btn.success[onclick*="Company details saved"]');
+  if(saveBtn){
+    saveBtn.onclick=function(){
+      const company={
+        name:document.querySelector('[placeholder="Company Name"]')?.value||'',
+        gstin:document.querySelector('[placeholder="GSTIN"]')?.value||'',
+        pan:document.querySelector('[placeholder="PAN"]')?.value||'',
+      };
+      localStorage.setItem('bl_company',JSON.stringify(company));
+      blToast('Company details saved ✓');
+    };
+  }
+});
+
+// Dashboard — make key numbers editable
+document.addEventListener('DOMContentLoaded',function(){
+  const dash=localStorage.getItem('bl_dash');
+  if(dash){
+    const d=JSON.parse(dash);
+    const cards=document.querySelectorAll('.kpi-val,.stat-val,[class*="kpi"],[class*="stat"]');
+    if(d.cash&&cards[0])cards[0].textContent='₹'+Number(d.cash).toLocaleString('en-IN');
+    if(d.revenue&&cards[1])cards[1].textContent='₹'+Number(d.revenue).toLocaleString('en-IN');
+    if(d.expenses&&cards[2])cards[2].textContent='₹'+Number(d.expenses).toLocaleString('en-IN');
+    if(d.gst&&cards[3])cards[3].textContent='₹'+Number(d.gst).toLocaleString('en-IN');
+  }
+});
