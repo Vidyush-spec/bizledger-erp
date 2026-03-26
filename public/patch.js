@@ -330,3 +330,60 @@ window.addEventListener('load',async function(){
     }
   }catch(e){console.warn('Invoices:',e.message);}
 });
+window.renderGST = function(){
+  // Calculate output GST from real INVOICES
+  const postedInvoices=INVOICES.filter(i=>i.status!=='draft'&&i.status!=='cancelled');
+  const outputTax=postedInvoices.reduce((s,i)=>s+(i.tax||0),0);
+  const taxableValue=postedInvoices.reduce((s,i)=>s+((i.total||0)-(i.tax||0)),0);
+  const cgst=outputTax/2;
+  const sgst=outputTax/2;
+  const itcTotal=ITC_DATA.reduce((s,r)=>s+(r.cgst+r.sgst+r.igst),0);
+  const netPayable=Math.max(0,outputTax-itcTotal);
+  // Filing status
+  document.getElementById('gstFilingStatus').innerHTML=[
+    {title:'GSTR-1 (Mar 2026)',sub:'Outward supplies — Due 11 Apr',status:'filed'},
+    {title:'GSTR-3B (Mar 2026)',sub:'Summary return — Due 20 Apr',status:'pending'},
+    {title:'GSTR-1 (Feb 2026)',sub:'Outward supplies',status:'filed'},
+  ].map(r=>`<div style="background:var(--surface2);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-weight:500;font-size:13px">${r.title}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${r.sub}</div></div>
+    <span class="tag ${r.status==='filed'?'t-green':'t-orange'}">${r.status==='filed'?'✓ Filed':'⏳ Pending'}</span>
+  </div>`).join('');
+  // Invoice list
+  const tagC={paid:'t-green',unpaid:'t-red',draft:'t-blue',partial:'t-orange',posted:'t-green'};
+  document.getElementById('gstInvListCard').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:500">All GST Invoices <span style="color:var(--muted);font-size:12px;font-weight:400">· ${postedInvoices.length} invoices</span></div>
+    ${INVOICES.map(i=>`<div class="list-row">
+      <span style="width:72px;font-family:monospace;font-size:11px;color:var(--muted)">${i.no}</span>
+      <div style="flex:1"><div style="font-weight:500">${i.party}</div><div style="font-size:11px;color:var(--muted);font-family:monospace">${i.gstin||''}</div></div>
+      <span style="width:100px;font-size:12px;color:var(--muted)">${i.date||''}</span>
+      <span style="width:80px;text-align:right;color:var(--accent3);font-size:12px">${fmt(i.tax||0)}</span>
+      <span style="width:100px;font-weight:600;text-align:right">${fmt(i.total||0)}</span>
+      <span class="tag ${tagC[i.status]||'t-blue'}">${i.status?.charAt(0).toUpperCase()+i.status?.slice(1)||'Draft'}</span>
+    </div>`).join('')}`;
+  // Returns grid — calculated from real invoices
+  document.getElementById('gstReturnsGrid').innerHTML=`
+    <div class="card">
+      <div style="font-size:14px;font-weight:500;margin-bottom:12px">GSTR-1 — March 2026 <span class="tag t-green" style="margin-left:8px">✓ Filed</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Total Invoices</span><span style="font-weight:600">${postedInvoices.length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Taxable Value</span><span style="font-weight:600">${fmt(taxableValue)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">CGST</span><span style="font-weight:600">${fmt(cgst)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span style="color:var(--muted)">SGST</span><span style="font-weight:600">${fmt(sgst)}</span></div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:500;margin-bottom:12px">GSTR-3B — March 2026 <span class="tag t-orange" style="margin-left:8px">⏳ Pending</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Output Tax</span><span style="font-weight:600">${fmt(outputTax)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">ITC Available</span><span style="color:var(--accent2);font-weight:600">−${fmt(itcTotal)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:700"><span>Net Payable</span><span style="color:var(--accent3)">${fmt(netPayable)}</span></div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" onclick="toast('GST portal integration coming soon!')">🚀 File Now</button>
+    </div>`;
+  // ITC table
+  document.getElementById('itcTbl').innerHTML=`
+    <thead><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th class="r">CGST</th><th class="r">SGST</th><th class="r">IGST</th><th class="r">Total ITC</th><th>Eligible</th></tr></thead>
+    <tbody>${ITC_DATA.map(r=>`<tr>
+      <td style="color:var(--muted);font-size:12px">${r.date}</td><td style="font-weight:500">${r.supplier}</td>
+      <td style="font-family:monospace;font-size:11px">${r.inv}</td>
+      <td class="r">${r.cgst?fmt(r.cgst):'—'}</td><td class="r">${r.sgst?fmt(r.sgst):'—'}</td><td class="r">${r.igst?fmt(r.igst):'—'}</td>
+      <td class="r" style="font-weight:600;color:var(--accent2)">${fmt(r.cgst+r.sgst+r.igst)}</td>
+      <td><span class="tag ${r.eligible==='full'?'t-green':r.eligible==='partial'?'t-orange':'t-red'}">${r.eligible==='full'?'✓ Eligible':r.eligible==='partial'?'~ Partial':'✗ Blocked'}</span></td>
+    </tr>`).join('')}</tbody>`;
+};
