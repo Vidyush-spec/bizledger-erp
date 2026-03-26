@@ -331,6 +331,7 @@ window.addEventListener('load',async function(){
       INVOICES.forEach(inv=>{if(paidList.includes(inv.no))inv.status='paid';});
       renderAllInvoices();
       if(typeof renderGST==='function')renderGST();
+blUpdateGSTOverview();
       renderAllInvoices();
     }
   }catch(e){console.warn('Invoices:',e.message);}
@@ -440,7 +441,7 @@ function blUpdateGSTOverview(){
     if(lbl==='Pending Invoices')el.textContent=pending;
   });
 }
-window.addEventListener('load',function(){setTimeout(blUpdateGSTOverview,1000);});
+
 document.addEventListener('click',function(e){
   if(e.target.closest('[onclick*="gst"]')||e.target.closest('.tab'))setTimeout(blUpdateGSTOverview,200);
 });
