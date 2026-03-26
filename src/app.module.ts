@@ -5,6 +5,7 @@ import { UsersModule } from './users/users.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { EmployeesModule } from './employees/employees.module';
 import { ProductsModule } from './products/products.module';
+import { JournalEntriesModule } from './journal-entries/journal-entries.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ProductsModule } from './products/products.module';
     InvoicesModule,
     EmployeesModule,
     ProductsModule,
+    JournalEntriesModule,
   ],
   providers: [PrismaService],
 })
