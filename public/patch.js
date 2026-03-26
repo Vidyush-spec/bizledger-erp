@@ -1,6 +1,7 @@
 (function(){
   if(!localStorage.getItem('bl_token')){
-    window.location.href='/login.html';return;
+    document.documentElement.style.visibility='hidden';
+    window.location.replace('/login.html');
   }
 })();
 
