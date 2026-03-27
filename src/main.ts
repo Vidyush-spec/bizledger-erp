@@ -30,7 +30,7 @@ async function bootstrap() {
   // Plain English: Only your ERP frontend is allowed to
   // talk to this backend. Rejects requests from anywhere else.
   app.enableCors({
-    origin: process.env.FRONTEND_URL,
+    origin: true,
     credentials: true,          // Allow cookies to be sent
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
