@@ -6,7 +6,6 @@ import { AuthService } from './auth.service';
 class LoginDto {
   @IsEmail()
   email: string;
-
   @IsString()
   @MinLength(6)
   password: string;
@@ -19,13 +18,13 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   login(@Body() body: LoginDto) {
-    return this.authService.login(body.email, body.password);
+    return this.authService.login(body.email, body.password, 'unknown');
   }
 
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   me(@Request() req) {
-    return this.authService.getMe(req.user.sub);
+    return { id: req.user.sub, email: req.user.email, role: req.user.role };
   }
 
   @Post('logout')
