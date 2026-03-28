@@ -128,7 +128,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
-      localStorage.setItem('bl_token', data.token);
+      localStorage.setItem('bl_token', data.accessToken);
       localStorage.setItem('bl_user', JSON.stringify(data.user));
       window.location.href = '/index.html';
     } catch (err) {
