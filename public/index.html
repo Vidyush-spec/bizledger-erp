@@ -790,13 +790,7 @@ const MOVEMENTS = [
   {date:'2026-03-12',prod:'Corrugated Box',        ref:'PO-0003', type:'in', qty:100, bal:350},
 ];
 
-const PO_LIST = [
-  {no:'PO-0001',vendor:'ABC Supplies',    date:'2026-03-02',items:4,amount:34200,status:'received'},
-  {no:'PO-0002',vendor:'Prakash Traders', date:'2026-03-08',items:2,amount:12400,status:'received'},
-  {no:'PO-0003',vendor:'Metro Packaging', date:'2026-03-12',items:3,amount:8750, status:'partial'},
-  {no:'PO-0004',vendor:'Raj Paper Mart',  date:'2026-03-15',items:5,amount:5640, status:'ordered'},
-  {no:'PO-0005',vendor:'TechSource India',date:'2026-03-20',items:1,amount:42000,status:'ordered'},
-];
+const PO_LIST = [];
 
 const AVATAR_COLORS = ['#4f7cff','#00d2a0','#ff7c4f','#c77dff','#ff4f6e','#f5c518','#00bcd4','#ff6b9d'];
 let EMPLOYEES = [
@@ -1157,16 +1151,7 @@ function postGstInvoice(){
 function renderInventory(){
   filterProds();
   // PO
-  document.getElementById('poCard').innerHTML=`
-    <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:500">Purchase Orders</div>
-    ${PO_LIST.map(p=>`<div class="list-row">
-      <span style="font-family:monospace;font-size:11px;color:var(--muted);width:72px">${p.no}</span>
-      <span style="flex:1;font-weight:500">${p.vendor}</span>
-      <span style="width:100px;font-size:12px;color:var(--muted)">${p.date}</span>
-      <span style="width:70px;text-align:center;font-size:12px;color:var(--muted)">${p.items} items</span>
-      <span style="width:100px;font-weight:600;text-align:right">${fmt(p.amount)}</span>
-      <span class="tag ${tagClass(p.status)}">${p.status.charAt(0).toUpperCase()+p.status.slice(1)}</span>
-    </div>`).join('')}`;
+  loadPurchaseOrders();
   // Movements
   document.getElementById('mvCard').innerHTML=`
     <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:500">Stock Movements</div>

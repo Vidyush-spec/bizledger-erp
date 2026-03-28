@@ -445,3 +445,158 @@ function blUpdateGSTOverview(){
 document.addEventListener('click',function(e){
   if(e.target.closest('[onclick*="gst"]')||e.target.closest('.tab'))setTimeout(blUpdateGSTOverview,200);
 });
+/* ══════════════ PURCHASE ORDERS (REAL API) ══════════════ */
+async function loadPurchaseOrders() {
+  const token = localStorage.getItem('bl_token');
+  const card = document.getElementById('poCard');
+  if (!card) return;
+  card.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Loading...</div>';
+  try {
+    const res = await fetch(BL_BACKEND + '/purchase-orders', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const pos = await res.json();
+    const list = Array.isArray(pos) ? pos : [];
+    const statusClass = { ORDERED:'t-blue', PARTIAL:'t-yellow', RECEIVED:'t-green', CANCELLED:'t-muted' };
+    card.innerHTML = `
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:500">Purchase Orders</span>
+        <button class="btn primary" onclick="openNewPOModal()" style="padding:6px 14px;font-size:12px">+ New PO</button>
+      </div>
+      ${list.length === 0 ? '<div style="padding:32px;text-align:center;color:var(--muted)">No purchase orders yet</div>' :
+        list.map(p => `<div class="list-row">
+          <span style="font-family:monospace;font-size:11px;color:var(--muted);width:80px">${p.poNo}</span>
+          <span style="flex:1;font-weight:500">${p.vendorName}</span>
+          <span style="width:100px;font-size:12px;color:var(--muted)">${new Date(p.orderDate).toLocaleDateString('en-IN')}</span>
+          <span style="width:70px;text-align:center;font-size:12px;color:var(--muted)">${p.items ? p.items.length : 0} items</span>
+          <span style="width:110px;font-weight:600;text-align:right">₹${Number(p.totalAmount).toLocaleString('en-IN')}</span>
+          <span class="tag ${statusClass[p.status] || 't-blue'}">${p.status.charAt(0)+p.status.slice(1).toLowerCase()}</span>
+          ${p.status === 'ORDERED' ? `<button onclick="updatePOStatus('${p.id}','RECEIVED')" style="margin-left:6px;padding:3px 8px;font-size:11px;border:none;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">Receive</button>` : ''}
+        </div>`).join('')
+      }`;
+  } catch(e) {
+    card.innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Failed to load POs</div>';
+  }
+}
+
+async function updatePOStatus(id, status) {
+  const token = localStorage.getItem('bl_token');
+  if (!confirm('Mark this PO as ' + status + '?')) return;
+  await fetch(BL_BACKEND + '/purchase-orders/' + id + '/status', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ status })
+  });
+  loadPurchaseOrders();
+}
+
+function openNewPOModal() {
+  // Build modal HTML
+  const existing = document.getElementById('po-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'po-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:620px;max-height:90vh;overflow-y:auto">
+      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">New Purchase Order</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Vendor Name *</label>
+          <input id="po-vendor" class="fi" placeholder="Supplier name" /></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Vendor GSTIN</label>
+          <input id="po-gstin" class="fi" placeholder="Optional" /></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Order Date *</label>
+          <input id="po-date" class="fi" type="date" value="${new Date().toISOString().split('T')[0]}" /></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Expected Delivery</label>
+          <input id="po-expected" class="fi" type="date" /></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Notes</label>
+          <input id="po-notes" class="fi" placeholder="Optional" /></div>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Items</div>
+      <div id="po-item-rows"></div>
+      <button onclick="addPOItemRow()" style="width:100%;padding:8px;border:1.5px dashed var(--border);border-radius:8px;background:none;color:var(--muted);cursor:pointer;font-size:13px;margin-top:4px">+ Add Item</button>
+      <div id="po-total" style="text-align:right;font-size:13px;font-weight:600;margin-top:8px">Total: ₹0</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1.25rem">
+        <button onclick="document.getElementById('po-modal').remove()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Cancel</button>
+        <button onclick="submitNewPO()" class="btn primary" style="padding:8px 18px;font-size:13px">Create PO</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  addPOItemRow();
+}
+
+function addPOItemRow() {
+  const rows = document.getElementById('po-item-rows');
+  if (!rows) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:end';
+  const prods = window._blProducts || [];
+  div.innerHTML = `
+    <select class="fi" onchange="setPORate(this);calcPOTotal()">
+      <option value="">Select product</option>
+      ${prods.map(p => `<option value="${p.id}" data-cost="${p.costPrice}">${p.name}</option>`).join('')}
+    </select>
+    <input class="fi" type="number" placeholder="Qty" value="1" min="1" oninput="calcPOTotal()" />
+    <input class="fi" type="number" placeholder="Rate ₹" min="0" step="0.01" oninput="calcPOTotal()" />
+    <button onclick="this.parentElement.remove();calcPOTotal()" style="padding:6px 10px;border:none;border-radius:6px;background:#fef2f2;color:#dc2626;cursor:pointer">✕</button>`;
+  rows.appendChild(div);
+}
+
+function setPORate(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.cost) {
+    sel.parentElement.querySelectorAll('input')[1].value = opt.dataset.cost;
+  }
+}
+
+function calcPOTotal() {
+  let total = 0;
+  document.querySelectorAll('#po-item-rows > div').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const qty = parseFloat(inputs[0].value) || 0;
+    const rate = parseFloat(inputs[1].value) || 0;
+    total += qty * rate;
+  });
+  const el = document.getElementById('po-total');
+  if (el) el.textContent = 'Total: ₹' + total.toLocaleString('en-IN', {minimumFractionDigits:2});
+}
+
+async function submitNewPO() {
+  const token = localStorage.getItem('bl_token');
+  const vendor = document.getElementById('po-vendor').value.trim();
+  const date = document.getElementById('po-date').value;
+  if (!vendor || !date) { alert('Vendor name and date are required'); return; }
+  const items = [];
+  let total = 0;
+  let valid = true;
+  document.querySelectorAll('#po-item-rows > div').forEach(row => {
+    const pid = row.querySelector('select').value;
+    const inputs = row.querySelectorAll('input');
+    const qty = parseFloat(inputs[0].value);
+    const rate = parseFloat(inputs[1].value);
+    if (!pid || !qty || !rate) { valid = false; return; }
+    items.push({ productId: pid, quantity: qty, rate });
+    total += qty * rate;
+  });
+  if (!valid || items.length === 0) { alert('Please fill all item fields and add at least one item'); return; }
+  try {
+    const res = await fetch(BL_BACKEND + '/purchase-orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        vendorName: vendor,
+        vendorGstin: document.getElementById('po-gstin').value.trim() || null,
+        orderDate: date,
+        expectedDate: document.getElementById('po-expected').value || null,
+        notes: document.getElementById('po-notes').value.trim() || null,
+        totalAmount: total,
+        items
+      })
+    });
+    if (!res.ok) throw new Error('Failed');
+    document.getElementById('po-modal').remove();
+    loadPurchaseOrders();
+  } catch(e) {
+    alert('Error creating PO. Please try again.');
+  }
+}
