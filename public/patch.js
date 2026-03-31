@@ -600,3 +600,88 @@ async function submitNewPO() {
     alert('Error creating PO. Please try again.');
   }
 }
+/* ══════════════ LEDGER (REAL API) ══════════════ */
+async function loadLedgerAccounts() {
+  const token = localStorage.getItem('bl_token');
+  const sel = document.getElementById('ledSel');
+  if (!sel) return;
+  try {
+    const res = await fetch(BL_BACKEND + '/journal-entries/accounts', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const accounts = await res.json();
+    if (!Array.isArray(accounts) || accounts.length === 0) return;
+    sel.innerHTML = '<option value="">— Select Account —</option>' +
+      accounts.map(a => `<option value="${a.id}">${a.code} — ${a.name}</option>`).join('');
+    sel.onchange = renderLedgerReal;
+  } catch(e) {
+    console.error('Failed to load accounts', e);
+  }
+}
+
+async function renderLedgerReal() {
+  const token = localStorage.getItem('bl_token');
+  const accountId = document.getElementById('ledSel').value;
+  const card = document.getElementById('ledgerCard');
+  if (!accountId) {
+    card.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Select an account above</div>';
+    return;
+  }
+  card.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Loading...</div>';
+  try {
+    const res = await fetch(BL_BACKEND + '/journal-entries/ledger/' + accountId, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const data = await res.json();
+    const acc = data.account;
+    const txns = data.transactions || [];
+
+    let rows = '';
+    if (txns.length === 0) {
+      rows = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px">No posted transactions for this account yet</td></tr>';
+    } else {
+      rows = txns.map(t => {
+        const bal = t.balance;
+        const date = new Date(t.date).toLocaleDateString('en-IN');
+        return `<tr>
+          <td style="color:var(--muted);font-size:12px">${date}</td>
+          <td>${t.narration}<div style="font-size:10px;color:var(--muted);margin-top:2px">${t.entryNo}</div></td>
+          <td class="r" style="color:var(--accent2)">${t.debit ? '₹' + Number(t.debit).toLocaleString('en-IN') : '—'}</td>
+          <td class="r" style="color:var(--accent3)">${t.credit ? '₹' + Number(t.credit).toLocaleString('en-IN') : '—'}</td>
+          <td class="r" style="font-family:monospace;font-size:12px;color:${bal >= 0 ? 'var(--accent)' : 'var(--danger)'}">
+            ${bal >= 0 ? 'Dr' : 'Cr'} ₹${Math.abs(bal).toLocaleString('en-IN')}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    card.innerHTML = `
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:500">${acc.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${acc.code} · ${acc.group}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--muted)">Balance</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent2)">₹${Number(acc.balance).toLocaleString('en-IN')}</div>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Date</th><th>Narration</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Running Bal</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(e) {
+    card.innerHTML = '<div style="padding:40px;text-align:center;color:var(--danger)">Failed to load ledger</div>';
+  }
+}
+
+// Override the original renderLedger with real API version
+window.renderLedger = renderLedgerReal;
+/* ══════════════ LEDGER TAB HOOK ══════════════ */
+const _origShowAccTab = window.showAccTab;
+window.showAccTab = function(id, el) {
+  if (_origShowAccTab) _origShowAccTab(id, el);
+  if (id === 'ledger') {
+    loadLedgerAccounts();
+  }
+};
