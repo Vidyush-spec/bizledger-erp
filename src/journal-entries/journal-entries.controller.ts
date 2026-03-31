@@ -20,6 +20,16 @@ export class JournalEntriesController {
     return this.journalEntriesService.getAccountBalances(req.user.companyId);
   }
 
+  @Get('accounts')
+  getAccounts(@Request() req) {
+    return this.journalEntriesService.getAccounts(req.user.companyId);
+  }
+
+  @Get('ledger/:accountId')
+  getLedger(@Param('accountId') accountId: string, @Request() req) {
+    return this.journalEntriesService.getLedger(accountId, req.user.companyId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
     return this.journalEntriesService.findOne(id, req.user.companyId);
