@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -84,21 +84,16 @@ export class JournalEntriesService {
       where: { id: accountId, companyId },
     });
     if (!account) throw new NotFoundException('Account not found');
-
     const lines = await this.prisma.journalLine.findMany({
       where: {
-        OR: [
-          { debitAccountId: accountId },
-          { creditAccountId: accountId },
-        ],
+        OR: [{ debitAccountId: accountId }, { creditAccountId: accountId }],
         journalEntry: { companyId, deletedAt: null, status: 'POSTED' },
       },
       include: { journalEntry: true },
       orderBy: { journalEntry: { date: 'asc' } },
     });
-
     let runningBalance = 0;
-    const transactions = lines.map(line => {
+    const transactions = lines.map((line: any) => {
       const isDebit = line.debitAccountId === accountId;
       const amount = Number(line.amount);
       runningBalance += isDebit ? amount : -amount;
@@ -111,7 +106,6 @@ export class JournalEntriesService {
         balance: runningBalance,
       };
     });
-
     return {
       account: {
         id: account.id,
