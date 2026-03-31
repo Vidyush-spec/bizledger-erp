@@ -57,7 +57,6 @@ export class JournalEntriesService {
       where: { companyId, deletedAt: null, status: 'POSTED' },
       include: { lines: true },
     });
-
     const balances: Record<string, number> = {};
     entries.forEach(entry => {
       entry.lines.forEach((line: any) => {
@@ -70,5 +69,58 @@ export class JournalEntriesService {
       });
     });
     return balances;
+  }
+
+  async getAccounts(companyId: string) {
+    return this.prisma.account.findMany({
+      where: { companyId, deletedAt: null },
+      orderBy: { code: 'asc' },
+      select: { id: true, code: true, name: true, group: true, balance: true, side: true },
+    });
+  }
+
+  async getLedger(accountId: string, companyId: string) {
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, companyId },
+    });
+    if (!account) throw new NotFoundException('Account not found');
+
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        OR: [
+          { debitAccountId: accountId },
+          { creditAccountId: accountId },
+        ],
+        journalEntry: { companyId, deletedAt: null, status: 'POSTED' },
+      },
+      include: { journalEntry: true },
+      orderBy: { journalEntry: { date: 'asc' } },
+    });
+
+    let runningBalance = 0;
+    const transactions = lines.map(line => {
+      const isDebit = line.debitAccountId === accountId;
+      const amount = Number(line.amount);
+      runningBalance += isDebit ? amount : -amount;
+      return {
+        date: line.journalEntry.date,
+        narration: line.journalEntry.narration,
+        entryNo: line.journalEntry.entryNo,
+        debit: isDebit ? amount : 0,
+        credit: isDebit ? 0 : amount,
+        balance: runningBalance,
+      };
+    });
+
+    return {
+      account: {
+        id: account.id,
+        code: account.code,
+        name: account.name,
+        group: account.group,
+        balance: Number(account.balance),
+      },
+      transactions,
+    };
   }
 }
