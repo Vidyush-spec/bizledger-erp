@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -7,6 +7,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { ProductsModule } from './products/products.module';
 import { JournalEntriesModule } from './journal-entries/journal-entries.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { StockMovementsModule } from './stock-movements/stock-movements.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
     ProductsModule,
     JournalEntriesModule,
     PurchaseOrdersModule,
+    StockMovementsModule,
   ],
   providers: [PrismaService],
 })
