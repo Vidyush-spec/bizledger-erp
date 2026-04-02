@@ -685,3 +685,172 @@ window.showAccTab = function(id, el) {
     loadLedgerAccounts();
   }
 };
+/* STOCK MOVEMENTS REAL API */
+async function loadStockMovements() {
+  const token = localStorage.getItem('bl_token');
+  const card = document.getElementById('mvCard');
+  if (!card) return;
+  card.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Loading...</div>';
+  try {
+    const res = await fetch(BL_BACKEND + '/stock-movements', { headers: { Authorization: 'Bearer ' + token } });
+    const list = await res.json();
+    const movements = Array.isArray(list) ? list : [];
+    const tc = { STOCK_IN:'t-green', STOCK_OUT:'t-orange', ADJUSTMENT:'t-blue', RETURN_IN:'t-green', RETURN_OUT:'t-orange' };
+    const tl = { STOCK_IN:'In', STOCK_OUT:'Out', ADJUSTMENT:'Adj', RETURN_IN:'Return In', RETURN_OUT:'Return Out' };
+    card.innerHTML = '<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:500">Stock Movements</span><button class="btn primary" onclick="openMovementModal()" style="padding:6px 14px;font-size:12px">+ Record Movement</button></div>' +
+      (movements.length === 0 ? '<div style="padding:32px;text-align:center;color:var(--muted)">No movements recorded yet</div>' :
+        movements.map(m => '<div class="list-row"><span style="width:100px;font-size:12px;color:var(--muted)">' + new Date(m.createdAt).toLocaleDateString('en-IN') + '</span><span style="flex:1;font-weight:500">' + m.product.name + '</span><span style="font-family:monospace;font-size:11px;color:var(--accent);width:80px">' + (m.reference || '-') + '</span><span class="tag ' + (tc[m.type]||'t-blue') + '">' + (tl[m.type]||m.type) + '</span><span style="width:80px;text-align:right;font-weight:600">' + (m.type.includes('OUT') ? '-' : '+') + Number(m.quantity).toLocaleString('en-IN') + '</span><span style="width:90px;text-align:right;color:var(--muted);font-size:12px">Bal: ' + Number(m.balanceAfter).toLocaleString('en-IN') + '</span></div>').join('')
+      );
+  } catch(e) {
+    card.innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Failed to load movements</div>';
+  }
+}
+
+function openMovementModal() {
+  const ex = document.getElementById('mv-modal');
+  if (ex) ex.remove();
+  const prods = window._blProducts || [];
+  const modal = document.createElement('div');
+  modal.id = 'mv-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+  const opts = prods.map(p => '<option value="' + p.id + '">' + p.name + ' (' + p.sku + ')</option>').join('');
+  modal.innerHTML = '<div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:480px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">Record Stock Movement</h2><div style="display:flex;flex-direction:column;gap:12px"><div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Product *</label><select id="mv-product" class="fi"><option value="">Select product</option>' + opts + '</select></div><div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Type *</label><select id="mv-type" class="fi"><option value="STOCK_IN">Stock In</option><option value="STOCK_OUT">Stock Out</option><option value="ADJUSTMENT">Adjustment</option><option value="RETURN_IN">Return In</option><option value="RETURN_OUT">Return Out</option></select></div><div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Quantity *</label><input id="mv-qty" class="fi" type="number" min="0.001" step="0.001" placeholder="Enter quantity" /></div><div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Reference</label><input id="mv-ref" class="fi" placeholder="e.g. PO-001" /></div><div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Notes</label><input id="mv-notes" class="fi" placeholder="Optional" /></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1.25rem"><button id="mv-cancel" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Cancel</button><button onclick="submitMovement()" class="btn primary" style="padding:8px 18px;font-size:13px">Record</button></div></div>';
+  modal.querySelector('#mv-cancel').onclick = function(){ document.getElementById('mv-modal').remove(); };
+  document.body.appendChild(modal);
+}
+
+async function submitMovement() {
+  const token = localStorage.getItem('bl_token');
+  const productId = document.getElementById('mv-product').value;
+  const type = document.getElementById('mv-type').value;
+  const quantity = parseFloat(document.getElementById('mv-qty').value);
+  if (!productId || !quantity) { alert('Product and quantity are required'); return; }
+  try {
+    const res = await fetch(BL_BACKEND + '/stock-movements', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ productId, type, quantity, reference: document.getElementById('mv-ref').value.trim() || null, notes: document.getElementById('mv-notes').value.trim() || null }) });
+    if (!res.ok) throw new Error('Failed');
+    document.getElementById('mv-modal').remove();
+    loadStockMovements();
+  } catch(e) { alert('Error recording movement. Please try again.'); }
+}
+
+const _origShowInvTabMv = window.showInvTab;
+window.showInvTab = function(id, el) { if (_origShowInvTabMv) _origShowInvTabMv(id, el); if (id === 'movements') loadStockMovements(); };
+/* Load products into window._blProducts on startup */
+(async function loadBlProducts() {
+  const token = localStorage.getItem('bl_token');
+  if (!token) return;
+  try {
+    const res = await fetch(BL_BACKEND + '/products', { headers: { Authorization: 'Bearer ' + token } });
+    const data = await res.json();
+    window._blProducts = Array.isArray(data) ? data : (data.data || []);
+  } catch(e) { window._blProducts = []; }
+})();
+/* PAYROLL REAL API */
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+async function loadPayrollRuns() {
+  const token = localStorage.getItem('bl_token');
+  try {
+    const res = await fetch(BL_BACKEND + '/payroll/runs', { headers: { Authorization: 'Bearer ' + token } });
+    const runs = await res.json();
+    window._payrollRuns = Array.isArray(runs) ? runs : [];
+    renderPayrollFromDB();
+  } catch(e) { console.error('Failed to load payroll runs', e); }
+}
+
+function renderPayrollFromDB() {
+  const runs = window._payrollRuns || [];
+  const emps = window._blEmployees || [];
+
+  // Employee grid
+  const empGrid = document.getElementById('empGrid');
+  if (empGrid && emps.length > 0) {
+    const colors = ['#4f7cff','#00d2a0','#ff7c4f','#c77dff','#ff4f6e','#f5c518','#00bcd4','#ff6b9d'];
+    empGrid.innerHTML = emps.map((e,i) => {
+      const gross = e.basicSalary + e.hra + e.da + e.otherAllowances;
+      const pf = Math.round(e.basicSalary * 0.12);
+      const pt = e.basicSalary <= 10000 ? 0 : e.basicSalary <= 15000 ? 150 : 200;
+      const net = gross - pf - pt;
+      const init = e.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+      return '<div class="emp-card"><div class="emp-avatar" style="background:' + colors[i%8] + '">' + init + '</div><div style="flex:1;min-width:0"><div class="emp-name">' + e.name + '</div><div class="emp-dept">' + e.designation + ' · ' + e.department + '</div><div class="emp-salary">&#8377;' + gross.toLocaleString('en-IN') + '<span style="font-size:11px;color:var(--muted)">/mo</span></div><div class="emp-meta"><span class="tag t-blue" style="font-size:9px">' + e.employeeId + '</span><span class="tag t-green" style="font-size:9px">Active</span><span style="font-size:10px;color:var(--muted)">Net: &#8377;' + net.toLocaleString('en-IN') + '</span></div></div></div>';
+    }).join('');
+  }
+
+  // Payroll table
+  const payrollTable = document.getElementById('payrollTable');
+  if (payrollTable && emps.length > 0) {
+    payrollTable.innerHTML = emps.map(e => {
+      const gross = e.basicSalary + e.hra + e.da + e.otherAllowances;
+      const pf = Math.round(e.basicSalary * 0.12);
+      const esi = gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+      const pt = e.basicSalary <= 10000 ? 0 : e.basicSalary <= 15000 ? 150 : 200;
+      const net = gross - pf - esi - pt;
+      return '<div style="display:grid;grid-template-columns:24px 1fr 80px 100px 80px 90px 90px 100px 80px;gap:0;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12.5px;align-items:center"><input type="checkbox" checked><div><div style="font-weight:500">' + e.name + '</div><div style="font-size:10px;color:var(--muted)">' + e.department + '</div></div><div class="r">&#8377;' + e.basicSalary.toLocaleString('en-IN') + '</div><div class="r">&#8377;' + gross.toLocaleString('en-IN') + '</div><div class="r" style="color:var(--accent3)">&#8377;' + pf.toLocaleString('en-IN') + '</div><div class="r" style="color:var(--accent3)">&#8377;' + esi.toLocaleString('en-IN') + '</div><div class="r" style="color:var(--muted)">&#8377;' + pt.toLocaleString('en-IN') + '</div><div class="r" style="font-weight:600;color:var(--accent2)">&#8377;' + net.toLocaleString('en-IN') + '</div><div class="c"><span class="tag t-blue">Pending</span></div></div>';
+    }).join('');
+  }
+
+  // Payslip list
+  const payslipList = document.getElementById('payslipList');
+  if (payslipList) {
+    if (runs.length === 0) {
+      payslipList.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted)">No payroll processed yet. Use Process Payroll tab.</div>';
+    } else {
+      const latest = runs[0];
+      payslipList.innerHTML = '<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 100px 100px 100px 90px;gap:14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em"><span>Employee</span><span class="r">Gross</span><span class="r">Deductions</span><span class="r">Net Pay</span><span class="c">Month</span></div>' +
+        (latest.items || []).map(item => {
+          const deductions = item.pfEmployee + item.esiEmployee + item.professionalTax;
+          return '<div class="list-row" style="display:grid;grid-template-columns:1fr 100px 100px 100px 90px;gap:14px"><div><div style="font-weight:500">' + item.employee.name + '</div><div style="font-size:11px;color:var(--muted)">' + item.employee.employeeId + ' · ' + item.employee.department + '</div></div><div class="r" style="font-weight:500">&#8377;' + item.grossSalary.toLocaleString('en-IN') + '</div><div class="r" style="color:var(--accent3)">&#8377;' + deductions.toLocaleString('en-IN') + '</div><div class="r" style="font-weight:600;color:var(--accent2)">&#8377;' + item.netSalary.toLocaleString('en-IN') + '</div><div class="c"><span class="tag t-green">' + MONTH_NAMES[latest.month-1] + ' ' + latest.year + '</span></div></div>';
+        }).join('');
+    }
+  }
+}
+
+async function processPayrollReal() {
+  const token = localStorage.getItem('bl_token');
+  const monthEl = document.getElementById('payMonth');
+  const yearEl = document.getElementById('payYear');
+  const dateEl = document.getElementById('payDate');
+  const month = monthEl ? parseInt(monthEl.value) : new Date().getMonth() + 1;
+  const year = yearEl ? parseInt(yearEl.value) : new Date().getFullYear();
+  const paymentDate = dateEl ? dateEl.value : null;
+  if (!confirm('Process payroll for ' + MONTH_NAMES[month-1] + ' ' + year + '?')) return;
+  try {
+    const res = await fetch(BL_BACKEND + '/payroll/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ month, year, paymentDate })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.message || 'Failed to process payroll'); return; }
+    alert('Payroll processed! ' + (data.items||[]).length + ' employees paid.');
+    loadPayrollRuns();
+    showPayTab('payslips', document.querySelectorAll('#page-payroll .tab')[2]);
+  } catch(e) { alert('Error processing payroll. Please try again.'); }
+}
+
+/* Override processPayroll with real API */
+window.processPayroll = processPayrollReal;
+
+/* Load employees into _blEmployees */
+async function loadBlEmployees() {
+  const token = localStorage.getItem('bl_token');
+  if (!token) return;
+  try {
+    const res = await fetch(BL_BACKEND + '/employees', { headers: { Authorization: 'Bearer ' + token } });
+    const data = await res.json();
+    window._blEmployees = Array.isArray(data) ? data : [];
+  } catch(e) { window._blEmployees = []; }
+}
+
+/* Hook into showPayTab */
+const _origShowPayTab = window.showPayTab;
+window.showPayTab = function(id, el) {
+  if (_origShowPayTab) _origShowPayTab(id, el);
+  if (id === 'employees' || id === 'process' || id === 'payslips') {
+    if (!window._blEmployees) loadBlEmployees().then(renderPayrollFromDB);
+    else renderPayrollFromDB();
+  }
+};
+
+/* Init on page load */
+loadBlEmployees().then(() => loadPayrollRuns());
