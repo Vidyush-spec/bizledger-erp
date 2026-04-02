@@ -8,6 +8,7 @@ import { ProductsModule } from './products/products.module';
 import { JournalEntriesModule } from './journal-entries/journal-entries.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { StockMovementsModule } from './stock-movements/stock-movements.module';
+import { PayrollModule } from './payroll/payroll.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { StockMovementsModule } from './stock-movements/stock-movements.module';
     JournalEntriesModule,
     PurchaseOrdersModule,
     StockMovementsModule,
+    PayrollModule,
   ],
   providers: [PrismaService],
 })
