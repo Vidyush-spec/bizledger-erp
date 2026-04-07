@@ -1522,3 +1522,14 @@ window.postJE = async function() {
     blToast('Failed to post journal entry', 'error');
   }
 };
+
+/* ══ KEEP BACKEND ALIVE — ping every 4 minutes ══ */
+(function keepAlive() {
+  setInterval(async function() {
+    try {
+      await fetch(BL_BACKEND + '/auth/me', {
+        headers: { Authorization: 'Bearer ' + (localStorage.getItem('bl_token') || '') }
+      });
+    } catch(e) {}
+  }, 4 * 60 * 1000); // every 4 minutes
+})();
