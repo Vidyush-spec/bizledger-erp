@@ -1403,3 +1403,32 @@ window.renderPayrollFromDB = function() {
     });
   }, 400);
 };
+
+/* ══ FIX: Override renderInventory to inject real onclick ══ */
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    const origRenderInventory = window.renderInventory;
+    window.renderInventory = function() {
+      origRenderInventory();
+      setTimeout(function() {
+        document.querySelectorAll('#prodGrid .stock-card').forEach(function(card) {
+          if (card.dataset.blHooked) return;
+          card.dataset.blHooked = '1';
+          // Remove old onclick
+          card.removeAttribute('onclick');
+          card.style.cursor = 'pointer';
+          card.addEventListener('click', function(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            const skuEl = card.querySelector('[style*="monospace"]');
+            const sku = skuEl ? skuEl.textContent.trim() : '';
+            const prod = (window._blProducts || []).find(p => p.sku === sku);
+            if (prod) blViewProduct(prod.id);
+            else blToast('Product not found', 'error');
+          });
+        });
+      }, 200);
+    };
+    // Re-render immediately to apply hooks
+    if (document.getElementById('prodGrid')) window.renderInventory();
+  }, 1000);
+});
