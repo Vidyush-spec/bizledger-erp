@@ -854,3 +854,144 @@ window.showPayTab = function(id, el) {
 
 /* Init on page load */
 loadBlEmployees().then(() => loadPayrollRuns());
+/* -------------- USER MANAGEMENT (REAL API) -------------- */
+async function loadUsers() {
+  const token = localStorage.getItem('bl_token');
+  const card = document.getElementById('userMgmtCard');
+  if (!card) return;
+  card.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Loading...</div>';
+  try {
+    const res = await fetch(BL_BACKEND + '/users', { headers: { Authorization: 'Bearer ' + token } });
+    const users = await res.json();
+    const me = JSON.parse(localStorage.getItem('bl_user') || '{}');
+    card.innerHTML = `
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:500">Users <span style="color:var(--muted);font-size:12px;font-weight:400">· ${users.length} total</span></span>
+        <button class="btn primary" onclick="openInviteUserModal()" style="padding:6px 14px;font-size:12px">+ Invite User</button>
+      </div>
+      ${users.map(u => `
+        <div class="list-row">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0">
+            ${u.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+          </div>
+          <div style="flex:1">
+            <div style="font-weight:500">${u.name} ${u.id === me.id ? '<span style="font-size:10px;color:var(--muted)">(you)</span>' : ''}</div>
+            <div style="font-size:12px;color:var(--muted)">${u.email}</div>
+          </div>
+          <span class="tag ${u.role === 'ADMIN' ? 't-blue' : 't-muted'}">${u.role}</span>
+          <span class="tag ${u.isActive ? 't-green' : 't-red'}">${u.isActive ? 'Active' : 'Inactive'}</span>
+          <span style="font-size:11px;color:var(--muted);width:120px;text-align:right">${u.lastLoginAt ? 'Last: ' + new Date(u.lastLoginAt).toLocaleDateString('en-IN') : 'Never logged in'}</span>
+          ${u.id !== me.id ? `<button class="btn" style="padding:4px 10px;font-size:11px" onclick="openEditUserModal('${u.id}','${u.name}','${u.role}',${u.isActive})">Edit</button>` : ''}
+        </div>`).join('')}`;
+  } catch(e) {
+    card.innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Failed to load users</div>';
+  }
+}
+
+function openInviteUserModal() {
+  const ex = document.getElementById('user-modal');
+  if (ex) ex.remove();
+  const modal = document.createElement('div');
+  modal.id = 'user-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:440px">
+      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">Invite New User</h2>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Full Name *</label>
+          <input id="iu-name" class="fi" placeholder="e.g. Rahul Sharma" /></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Email *</label>
+          <input id="iu-email" class="fi" type="email" placeholder="rahul@company.com" /></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Temporary Password *</label>
+          <input id="iu-pass" class="fi" type="password" placeholder="Min 8 characters" /></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Role</label>
+          <select id="iu-role" class="fi">
+            <option value="VIEWER">Viewer — Read only</option>
+            <option value="ADMIN">Admin — Full access</option>
+          </select></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;font-size:12px;color:var(--muted)">
+          ?? User will be prompted to change password on first login.
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1.25rem">
+        <button onclick="document.getElementById('user-modal').remove()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Cancel</button>
+        <button onclick="submitInviteUser()" class="btn primary" style="padding:8px 18px;font-size:13px">Create User</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function submitInviteUser() {
+  const token = localStorage.getItem('bl_token');
+  const name = document.getElementById('iu-name').value.trim();
+  const email = document.getElementById('iu-email').value.trim();
+  const password = document.getElementById('iu-pass').value;
+  const role = document.getElementById('iu-role').value;
+  if (!name || !email || !password) { blToast('Please fill all required fields', 'error'); return; }
+  if (password.length < 8) { blToast('Password must be at least 8 characters', 'error'); return; }
+  try {
+    const res = await fetch(BL_BACKEND + '/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ name, email, password, role })
+    });
+    const data = await res.json();
+    if (!res.ok) { blToast(data.message || 'Failed to create user', 'error'); return; }
+    document.getElementById('user-modal').remove();
+    blToast('User "' + name + '" created successfully ?');
+    loadUsers();
+  } catch(e) { blToast('Error creating user', 'error'); }
+}
+
+function openEditUserModal(id, name, role, isActive) {
+  const ex = document.getElementById('user-edit-modal');
+  if (ex) ex.remove();
+  const modal = document.createElement('div');
+  modal.id = 'user-edit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:400px">
+      <h2 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">Edit User</h2>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Role</label>
+          <select id="eu-role" class="fi">
+            <option value="VIEWER" ${role === 'VIEWER' ? 'selected' : ''}>Viewer — Read only</option>
+            <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin — Full access</option>
+          </select></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Status</label>
+          <select id="eu-active" class="fi">
+            <option value="true" ${isActive ? 'selected' : ''}>Active</option>
+            <option value="false" ${!isActive ? 'selected' : ''}>Inactive</option>
+          </select></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1.25rem">
+        <button onclick="document.getElementById('user-edit-modal').remove()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Cancel</button>
+        <button onclick="submitEditUser('${id}')" class="btn primary" style="padding:8px 18px;font-size:13px">Save Changes</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function submitEditUser(id) {
+  const token = localStorage.getItem('bl_token');
+  const role = document.getElementById('eu-role').value;
+  const isActive = document.getElementById('eu-active').value === 'true';
+  try {
+    const res = await fetch(BL_BACKEND + '/users/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ role, isActive })
+    });
+    if (!res.ok) throw new Error('Failed');
+    document.getElementById('user-edit-modal').remove();
+    blToast('User updated successfully ?');
+    loadUsers();
+  } catch(e) { blToast('Error updating user', 'error'); }
+}
+
+/* Hook: load users when Settings page is opened */
+const _origShowPage = window.showPage;
+window.showPage = function(id) {
+  if (_origShowPage) _origShowPage(id);
+  if (id === 'settings') setTimeout(loadUsers, 200);
+};
