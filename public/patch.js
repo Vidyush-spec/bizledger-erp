@@ -1432,3 +1432,93 @@ window.addEventListener('load', function() {
     if (document.getElementById('prodGrid')) window.renderInventory();
   }, 1000);
 });
+
+/* ══ JE FORM — REAL ACCOUNT UUIDs ══ */
+// Load accounts on startup and cache them
+window._blAccounts = [];
+(async function loadJEAccounts() {
+  const token = localStorage.getItem('bl_token');
+  if (!token) return;
+  try {
+    const res = await fetch(BL_BACKEND + '/journal-entries/accounts', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    window._blAccounts = await res.json();
+  } catch(e) { console.warn('Could not load accounts', e); }
+})();
+
+// Override addJELine to use real account UUIDs
+window.addJELine = function() {
+  if (typeof jeLineCount !== 'undefined') jeLineCount++;
+  else window.jeLineCount = (window.jeLineCount || 0) + 1;
+  const count = typeof jeLineCount !== 'undefined' ? jeLineCount : window.jeLineCount;
+  const accounts = window._blAccounts || [];
+  const grouped = {};
+  accounts.forEach(a => {
+    if (!grouped[a.group]) grouped[a.group] = [];
+    grouped[a.group].push(a);
+  });
+  const opts = Object.entries(grouped).map(([group, accs]) =>
+    `<optgroup label="${group}">${accs.map(a =>
+      `<option value="${a.id}">${a.code} — ${a.name}</option>`
+    ).join('')}</optgroup>`
+  ).join('');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="color:var(--muted);font-size:11px;text-align:center">${count}</td>
+    <td><select class="fi" style="font-size:12px">
+      <option value="">— Account —</option>${opts}
+    </select></td>
+    <td><input class="fi" style="font-size:12px" type="text" placeholder="Description"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right" type="number" placeholder="0" oninput="jeRecalc()"></td>
+    <td><input class="fi" style="font-size:12px;text-align:right" type="number" placeholder="0" oninput="jeRecalc()"></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove();jeRecalc()">✕</button></td>`;
+  document.getElementById('jeLines').appendChild(tr);
+  if (typeof jeRecalc === 'function') jeRecalc();
+};
+
+// Override postJE to send real account UUIDs in lines
+window.postJE = async function() {
+  const narr = document.getElementById('jeNarr').value.trim();
+  if (!narr) { toast('Please add a narration', 'e'); return; }
+  let dr = 0, cr = 0;
+  const lines = [];
+  document.querySelectorAll('#jeLines tr').forEach(row => {
+    const sel = row.querySelector('select');
+    const accountId = sel ? sel.value : '';
+    const inputs = row.querySelectorAll('input[type=number]');
+    const debit = parseFloat(inputs[0]?.value || 0);
+    const credit = parseFloat(inputs[1]?.value || 0);
+    const desc = row.querySelector('input[type=text]')?.value || '';
+    dr += debit;
+    cr += credit;
+    if (accountId && (debit || credit)) {
+      lines.push({ accountId, description: desc, debit: debit || 0, credit: credit || 0 });
+    }
+  });
+  if (Math.abs(dr - cr) > 0.01) { toast('Entry not balanced — Dr ≠ Cr', 'e'); return; }
+  if (dr === 0) { toast('Please enter amounts', 'e'); return; }
+  if (lines.length < 2) { toast('Please add at least 2 lines with accounts selected', 'e'); return; }
+  const entryNo = document.getElementById('jeRef').value;
+  const date = document.getElementById('jeDate').value;
+  const data = { entryNo, date, narration: narr, status: 'POSTED', lines };
+  try {
+    const token = localStorage.getItem('bl_token');
+    const res = await fetch(BL_BACKEND + '/journal-entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      blToast(err.message || 'Failed to post entry', 'error');
+      return;
+    }
+    if (typeof JE !== 'undefined') JE.push({ id: entryNo, date, narr, accounts: 'Multiple accounts', amount: dr, status: 'posted' });
+    document.getElementById('jeFormWrap').style.display = 'none';
+    if (typeof renderJEList === 'function') renderJEList();
+    blToast('Journal entry posted ✓');
+  } catch(e) {
+    blToast('Failed to post journal entry', 'error');
+  }
+};
