@@ -1,4 +1,4 @@
-// BizLedger ERP — patch.js (clean build)
+﻿// BizLedger ERP — patch.js (clean build)
 const BL_BACKEND='https://bizledger-erp-production.up.railway.app/api';
 
 // ── 1. AUTH GUARD ────────────────────────────────────────────────
@@ -866,7 +866,7 @@ async function loadUsers() {
     const me = JSON.parse(localStorage.getItem('bl_user') || '{}');
     card.innerHTML = `
       <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:14px;font-weight:500">Users <span style="color:var(--muted);font-size:12px;font-weight:400">� ${users.length} total</span></span>
+        <span style="font-size:14px;font-weight:500">Users <span style="color:var(--muted);font-size:12px;font-weight:400">� ${users.length} total</span></span>
         <button class="btn primary" onclick="openInviteUserModal()" style="padding:6px 14px;font-size:12px">+ Invite User</button>
       </div>
       ${users.map(u => `
@@ -906,8 +906,8 @@ function openInviteUserModal() {
           <input id="iu-pass" class="fi" type="password" placeholder="Min 8 characters" /></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Role</label>
           <select id="iu-role" class="fi">
-            <option value="VIEWER">Viewer � Read only</option>
-            <option value="ADMIN">Admin � Full access</option>
+            <option value="VIEWER">Viewer � Read only</option>
+            <option value="ADMIN">Admin � Full access</option>
           </select></div>
         <div style="background:var(--surface2);border-radius:8px;padding:10px;font-size:12px;color:var(--muted)">
           ?? User will be prompted to change password on first login.
@@ -955,8 +955,8 @@ function openEditUserModal(id, name, role, isActive) {
       <div style="display:flex;flex-direction:column;gap:12px">
         <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Role</label>
           <select id="eu-role" class="fi">
-            <option value="VIEWER" ${role === 'VIEWER' ? 'selected' : ''}>Viewer � Read only</option>
-            <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin � Full access</option>
+            <option value="VIEWER" ${role === 'VIEWER' ? 'selected' : ''}>Viewer � Read only</option>
+            <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin � Full access</option>
           </select></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Status</label>
           <select id="eu-active" class="fi">
@@ -995,3 +995,10 @@ window.showPage = function(id) {
   if (_origShowPage) _origShowPage(id);
   if (id === 'settings') setTimeout(loadUsers, 200);
 };
+
+/* Also load on initial page load if settings is active */
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    if (document.getElementById('userMgmtCard')) loadUsers();
+  }, 800);
+});
