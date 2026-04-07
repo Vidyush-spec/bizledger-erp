@@ -1002,3 +1002,404 @@ window.addEventListener('load', function() {
     if (document.getElementById('userMgmtCard')) loadUsers();
   }, 800);
 });
+
+/* ══════════════ DETAIL / EDIT MODALS FOR ALL MODULES ══════════════ */
+
+/* ── SHARED MODAL HELPER ── */
+function blOpenModal(html) {
+  const ex = document.getElementById('bl-detail-modal');
+  if (ex) ex.remove();
+  const m = document.createElement('div');
+  m.id = 'bl-detail-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = html;
+  m.addEventListener('click', function(e){ if(e.target===m) m.remove(); });
+  document.body.appendChild(m);
+}
+function blCloseModal() {
+  const m = document.getElementById('bl-detail-modal');
+  if (m) m.remove();
+}
+
+/* ══ 1. PRODUCT DETAIL / EDIT ══ */
+window.blViewProduct = async function(productId) {
+  const token = localStorage.getItem('bl_token');
+  blOpenModal('<div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:500px"><div style="text-align:center;color:var(--muted)">Loading...</div></div>');
+  try {
+    const res = await fetch(BL_BACKEND + '/products/' + productId, { headers: { Authorization: 'Bearer ' + token } });
+    const p = await res.json();
+    blOpenModal(`
+      <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:520px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <h2 style="font-size:1rem;font-weight:700">Product Details</h2>
+          <button onclick="blCloseModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Product Name</label>
+            <input id="pd-name" class="fi" value="${p.name}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">SKU</label>
+            <input id="pd-sku" class="fi" value="${p.sku}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Category</label>
+            <input id="pd-cat" class="fi" value="${p.category}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Unit</label>
+            <input id="pd-unit" class="fi" value="${p.unit||'Pcs'}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Current Stock</label>
+            <input id="pd-stock" class="fi" type="number" value="${p.currentStock}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Reorder Level</label>
+            <input id="pd-reorder" class="fi" type="number" value="${p.reorderLevel}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Cost Price (₹)</label>
+            <input id="pd-cost" class="fi" type="number" value="${p.costPrice}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Selling Price (₹)</label>
+            <input id="pd-sell" class="fi" type="number" value="${p.sellingPrice||''}" placeholder="Optional" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">HSN Code</label>
+            <input id="pd-hsn" class="fi" value="${p.hsnCode||''}" placeholder="Optional" /></div>
+          <div style="display:flex;align-items:center;gap:8px;padding-top:18px">
+            <input id="pd-active" type="checkbox" ${p.isActive?'checked':''} />
+            <label style="font-size:13px">Active</label>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="blCloseModal()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Cancel</button>
+          <button onclick="blSaveProduct('${p.id}')" class="btn primary" style="padding:8px 18px;font-size:13px">Save Changes</button>
+        </div>
+      </div>`);
+  } catch(e) { blToast('Failed to load product', 'error'); blCloseModal(); }
+};
+
+window.blSaveProduct = async function(id) {
+  const token = localStorage.getItem('bl_token');
+  const data = {
+    name: document.getElementById('pd-name').value,
+    sku: document.getElementById('pd-sku').value,
+    category: document.getElementById('pd-cat').value,
+    unit: document.getElementById('pd-unit').value,
+    currentStock: parseFloat(document.getElementById('pd-stock').value)||0,
+    reorderLevel: parseFloat(document.getElementById('pd-reorder').value)||0,
+    costPrice: parseFloat(document.getElementById('pd-cost').value)||0,
+    sellingPrice: parseFloat(document.getElementById('pd-sell').value)||null,
+    hsnCode: document.getElementById('pd-hsn').value||null,
+    isActive: document.getElementById('pd-active').checked,
+  };
+  try {
+    const res = await fetch(BL_BACKEND + '/products/' + id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed');
+    blCloseModal();
+    blToast('Product updated ✓');
+    // Reload products
+    const r2 = await fetch(BL_BACKEND + '/products', { headers: { Authorization: 'Bearer ' + token } });
+    window._blProducts = await r2.json();
+    if (typeof renderInventory === 'function') renderInventory();
+  } catch(e) { blToast('Failed to save product', 'error'); }
+};
+
+/* ══ 2. EMPLOYEE DETAIL / EDIT ══ */
+window.blViewEmployee = async function(employeeId) {
+  const token = localStorage.getItem('bl_token');
+  blOpenModal('<div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:500px"><div style="text-align:center;color:var(--muted)">Loading...</div></div>');
+  try {
+    const res = await fetch(BL_BACKEND + '/employees/' + employeeId, { headers: { Authorization: 'Bearer ' + token } });
+    const e = await res.json();
+    const joined = e.dateOfJoining ? new Date(e.dateOfJoining).toISOString().split('T')[0] : '';
+    blOpenModal(`
+      <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <h2 style="font-size:1rem;font-weight:700">Employee Details</h2>
+          <button onclick="blCloseModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Full Name</label>
+            <input id="ed-name" class="fi" value="${e.name}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Employee ID</label>
+            <input id="ed-empid" class="fi" value="${e.employeeId}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Department</label>
+            <input id="ed-dept" class="fi" value="${e.department}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Designation</label>
+            <input id="ed-desig" class="fi" value="${e.designation}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Employment Type</label>
+            <select id="ed-type" class="fi">
+              <option ${e.employmentType==='Full-time'?'selected':''}>Full-time</option>
+              <option ${e.employmentType==='Part-time'?'selected':''}>Part-time</option>
+              <option ${e.employmentType==='Contract'?'selected':''}>Contract</option>
+            </select></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Date of Joining</label>
+            <input id="ed-doj" class="fi" type="date" value="${joined}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Email</label>
+            <input id="ed-email" class="fi" type="email" value="${e.email||''}" placeholder="Optional" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Phone</label>
+            <input id="ed-phone" class="fi" value="${e.phone||''}" placeholder="Optional" /></div>
+          <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;font-size:12px;font-weight:600;color:var(--muted)">SALARY DETAILS</div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Basic Salary (₹)</label>
+            <input id="ed-basic" class="fi" type="number" value="${e.basicSalary}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">HRA (₹)</label>
+            <input id="ed-hra" class="fi" type="number" value="${e.hra||0}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">DA (₹)</label>
+            <input id="ed-da" class="fi" type="number" value="${e.da||0}" /></div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Other Allowances (₹)</label>
+            <input id="ed-other" class="fi" type="number" value="${e.otherAllowances||0}" /></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="blCloseModal()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Cancel</button>
+          <button onclick="blSaveEmployee('${e.id}')" class="btn primary" style="padding:8px 18px;font-size:13px">Save Changes</button>
+        </div>
+      </div>`);
+  } catch(e) { blToast('Failed to load employee', 'error'); blCloseModal(); }
+};
+
+window.blSaveEmployee = async function(id) {
+  const token = localStorage.getItem('bl_token');
+  const data = {
+    name: document.getElementById('ed-name').value,
+    employeeId: document.getElementById('ed-empid').value,
+    department: document.getElementById('ed-dept').value,
+    designation: document.getElementById('ed-desig').value,
+    employmentType: document.getElementById('ed-type').value,
+    dateOfJoining: document.getElementById('ed-doj').value ? new Date(document.getElementById('ed-doj').value).toISOString() : null,
+    email: document.getElementById('ed-email').value||null,
+    phone: document.getElementById('ed-phone').value||null,
+    basicSalary: parseFloat(document.getElementById('ed-basic').value)||0,
+    hra: parseFloat(document.getElementById('ed-hra').value)||0,
+    da: parseFloat(document.getElementById('ed-da').value)||0,
+    otherAllowances: parseFloat(document.getElementById('ed-other').value)||0,
+  };
+  try {
+    const res = await fetch(BL_BACKEND + '/employees/' + id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed');
+    blCloseModal();
+    blToast('Employee updated ✓');
+    await loadBlEmployees();
+    renderPayrollFromDB();
+  } catch(e) { blToast('Failed to save employee', 'error'); }
+};
+
+/* ══ 3. INVOICE DETAIL VIEW ══ */
+window.blViewInvoice = function(idx) {
+  const inv = INVOICES[idx];
+  if (!inv) return;
+  const co = JSON.parse(localStorage.getItem('bl_company_settings')||'{}');
+  blOpenModal(`
+    <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:580px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+        <h2 style="font-size:1rem;font-weight:700">Invoice ${inv.no}</h2>
+        <button onclick="blCloseModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px">Company</div><div style="font-weight:600">${co.name||'BizLedger Pvt. Ltd.'}</div><div style="font-size:12px;color:var(--muted)">${co.gstin||''}</div></div>
+        <div style="text-align:right"><div style="font-size:11px;color:var(--muted);margin-bottom:2px">Invoice No</div><div style="font-weight:600;font-family:monospace">${inv.no}</div><div style="font-size:12px;color:var(--muted)">${inv.date||''}</div></div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">BILL TO</div>
+        <div style="font-weight:600;font-size:15px">${inv.party}</div>
+        <div style="font-size:12px;color:var(--muted);font-family:monospace">${inv.gstin||'GSTIN not provided'}</div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 100px 100px;padding:10px 14px;background:var(--surface2);font-size:11px;color:var(--muted);text-transform:uppercase">
+          <span>Description</span><span style="text-align:right">Tax</span><span style="text-align:right">Total</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 100px 100px;padding:12px 14px;font-size:13px">
+          <span>Goods / Services</span>
+          <span style="text-align:right;color:var(--accent3)">₹${(inv.tax||0).toLocaleString('en-IN')}</span>
+          <span style="text-align:right;font-weight:600">₹${(inv.total||0).toLocaleString('en-IN')}</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:2px solid var(--border);font-size:15px;font-weight:700;margin-bottom:16px">
+        <span>Grand Total</span><span style="color:var(--accent2)">₹${(inv.total||0).toLocaleString('en-IN')}</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="blCloseModal()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Close</button>
+        ${inv.status!=='paid'?`<button onclick="blMarkPaid(${idx});blCloseModal()" class="btn success" style="padding:8px 18px;font-size:13px">✓ Mark Paid</button>`:''}
+        <button onclick="blPrintInvoice(${idx})" class="btn" style="padding:8px 18px;font-size:13px">🖨 Print</button>
+      </div>
+    </div>`);
+};
+
+/* ══ 4. PURCHASE ORDER DETAIL VIEW ══ */
+window.blViewPO = async function(poId) {
+  const token = localStorage.getItem('bl_token');
+  blOpenModal('<div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:500px"><div style="text-align:center;color:var(--muted)">Loading...</div></div>');
+  try {
+    const res = await fetch(BL_BACKEND + '/purchase-orders/' + poId, { headers: { Authorization: 'Bearer ' + token } });
+    const po = await res.json();
+    const statusClass = { ORDERED:'t-blue', PARTIAL:'t-orange', RECEIVED:'t-green', CANCELLED:'t-muted' };
+    blOpenModal(`
+      <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:580px;max-height:90vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <h2 style="font-size:1rem;font-weight:700">Purchase Order — ${po.poNo}</h2>
+          <button onclick="blCloseModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+          <div><span style="color:var(--muted)">Vendor:</span> <strong>${po.vendorName}</strong></div>
+          <div><span style="color:var(--muted)">GSTIN:</span> ${po.vendorGstin||'—'}</div>
+          <div><span style="color:var(--muted)">Order Date:</span> ${new Date(po.orderDate).toLocaleDateString('en-IN')}</div>
+          <div><span style="color:var(--muted)">Expected:</span> ${po.expectedDate?new Date(po.expectedDate).toLocaleDateString('en-IN'):'—'}</div>
+          <div><span style="color:var(--muted)">Status:</span> <span class="tag ${statusClass[po.status]||'t-blue'}">${po.status}</span></div>
+          <div><span style="color:var(--muted)">Notes:</span> ${po.notes||'—'}</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">ITEMS</div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:1fr 80px 90px 90px;padding:9px 14px;background:var(--surface2);font-size:11px;color:var(--muted);text-transform:uppercase">
+            <span>Product</span><span style="text-align:right">Qty</span><span style="text-align:right">Rate</span><span style="text-align:right">Amount</span>
+          </div>
+          ${(po.items||[]).map(item=>`
+          <div style="display:grid;grid-template-columns:1fr 80px 90px 90px;padding:10px 14px;border-top:1px solid var(--border);font-size:13px">
+            <span style="font-weight:500">${item.product?.name||'—'}</span>
+            <span style="text-align:right">${item.quantity}</span>
+            <span style="text-align:right">₹${Number(item.rate).toLocaleString('en-IN')}</span>
+            <span style="text-align:right;font-weight:600">₹${(Number(item.quantity)*Number(item.rate)).toLocaleString('en-IN')}</span>
+          </div>`).join('')}
+          <div style="display:grid;grid-template-columns:1fr 90px;padding:10px 14px;border-top:2px solid var(--border);font-size:14px;font-weight:700">
+            <span>Total</span><span style="text-align:right;color:var(--accent2)">₹${Number(po.totalAmount).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="blCloseModal()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Close</button>
+          ${po.status==='ORDERED'?`<button onclick="updatePOStatus('${po.id}','RECEIVED');blCloseModal()" class="btn success" style="padding:8px 18px;font-size:13px">✓ Mark Received</button>`:''}
+          ${po.status==='ORDERED'?`<button onclick="updatePOStatus('${po.id}','CANCELLED');blCloseModal()" class="btn" style="padding:8px 18px;font-size:13px;background:#fef2f2;color:#dc2626;border:none">✕ Cancel PO</button>`:''}
+        </div>
+      </div>`);
+  } catch(e) { blToast('Failed to load PO', 'error'); blCloseModal(); }
+};
+
+/* ══ 5. PAYSLIP DETAIL VIEW ══ */
+window.blViewPayslip = function(employeeId, month, year) {
+  const runs = window._payrollRuns || [];
+  const run = runs.find(r => r.month === month && r.year === year);
+  if (!run) { blToast('Payroll run not found', 'error'); return; }
+  const item = (run.items||[]).find(i => i.employee.id === employeeId || i.employeeId === employeeId);
+  if (!item) { blToast('Payslip not found', 'error'); return; }
+  const emp = item.employee;
+  const gross = item.grossSalary;
+  const deductions = item.pfEmployee + item.esiEmployee + item.professionalTax;
+  const net = item.netSalary;
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  blOpenModal(`
+    <div style="background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:500px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+        <h2 style="font-size:1rem;font-weight:700">Payslip — ${monthNames[month-1]} ${year}</h2>
+        <button onclick="blCloseModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="font-weight:600;font-size:15px">${emp.name}</div>
+        <div style="font-size:12px;color:var(--muted)">${emp.employeeId} · ${emp.department} · ${emp.designation}</div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">EARNINGS</div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>Basic Salary</span><span>₹${emp.basicSalary.toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>HRA</span><span>₹${(emp.hra||0).toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>DA</span><span>₹${(emp.da||0).toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:2px solid var(--border);font-size:13px"><span>Other Allowances</span><span>₹${(emp.otherAllowances||0).toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:600"><span>Gross Salary</span><span style="color:var(--accent2)">₹${gross.toLocaleString('en-IN')}</span></div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">DEDUCTIONS</div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>PF (Employee 12%)</span><span style="color:var(--accent3)">−₹${item.pfEmployee.toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>ESI (Employee 0.75%)</span><span style="color:var(--accent3)">−₹${item.esiEmployee.toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:2px solid var(--border);font-size:13px"><span>Professional Tax</span><span style="color:var(--accent3)">−₹${item.professionalTax.toLocaleString('en-IN')}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:600"><span>Total Deductions</span><span style="color:var(--danger)">−₹${deductions.toLocaleString('en-IN')}</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:14px;background:var(--surface2);border-radius:10px;font-size:16px;font-weight:700">
+        <span>Net Pay</span><span style="color:var(--accent2)">₹${net.toLocaleString('en-IN')}</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1.25rem">
+        <button onclick="blCloseModal()" style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:none;cursor:pointer;font-size:13px">Close</button>
+      </div>
+    </div>`);
+};
+
+/* ══ HOOK CLICK HANDLERS INTO EXISTING RENDER FUNCTIONS ══ */
+
+/* Products — override renderInventory to add onclick */
+const _origRenderInventory = window.renderInventory;
+window.renderInventory = function() {
+  if (_origRenderInventory) _origRenderInventory();
+  setTimeout(function() {
+    document.querySelectorAll('.prod-card, [class*="prod"]').forEach(function(card) {
+      if (card.dataset.blHooked) return;
+      card.dataset.blHooked = '1';
+      card.style.cursor = 'pointer';
+      const sku = card.querySelector('[class*="sku"], .prod-sku');
+      const skuText = sku ? sku.textContent.trim() : '';
+      card.addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+        const prod = (window._blProducts||[]).find(p => p.sku === skuText || card.textContent.includes(p.sku));
+        if (prod) blViewProduct(prod.id);
+      });
+    });
+  }, 300);
+};
+
+/* Invoices — add onclick to rows */
+const _origRenderAllInvoices = window.renderAllInvoices;
+window.renderAllInvoices = function() {
+  if (_origRenderAllInvoices) _origRenderAllInvoices();
+  setTimeout(function() {
+    document.querySelectorAll('#invoiceListBody .list-row').forEach(function(row, idx) {
+      if (row.dataset.blHooked) return;
+      row.dataset.blHooked = '1';
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON') return;
+        blViewInvoice(idx);
+      });
+    });
+  }, 200);
+};
+
+/* POs — add onclick to rows */
+const _origLoadPOs = window.loadPurchaseOrders;
+window.loadPurchaseOrders = async function() {
+  if (_origLoadPOs) await _origLoadPOs();
+  setTimeout(function() {
+    document.querySelectorAll('#poCard .list-row').forEach(function(row) {
+      if (row.dataset.blHooked) return;
+      row.dataset.blHooked = '1';
+      row.style.cursor = 'pointer';
+      const receiveBtn = row.querySelector('button');
+      const poId = receiveBtn ? receiveBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] : null;
+      if (!poId) return;
+      row.addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON') return;
+        blViewPO(poId);
+      });
+    });
+  }, 400);
+};
+
+/* Employees — add onclick to emp-cards */
+const _origRenderPayrollFromDB = window.renderPayrollFromDB;
+window.renderPayrollFromDB = function() {
+  if (_origRenderPayrollFromDB) _origRenderPayrollFromDB();
+  setTimeout(function() {
+    document.querySelectorAll('.emp-card').forEach(function(card) {
+      if (card.dataset.blHooked) return;
+      card.dataset.blHooked = '1';
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', function() {
+        const nameEl = card.querySelector('.emp-name');
+        const name = nameEl ? nameEl.textContent.trim() : '';
+        const emp = (window._blEmployees||[]).find(e => e.name === name);
+        if (emp) blViewEmployee(emp.id);
+      });
+    });
+    // Payslip rows
+    document.querySelectorAll('#payslipList .list-row').forEach(function(row) {
+      if (row.dataset.blHooked) return;
+      row.dataset.blHooked = '1';
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function() {
+        const runs = window._payrollRuns || [];
+        if (!runs.length) return;
+        const latest = runs[0];
+        const nameEl = row.querySelector('div > div');
+        const name = nameEl ? nameEl.textContent.trim() : '';
+        const item = (latest.items||[]).find(i => i.employee.name === name);
+        if (item) blViewPayslip(item.employee.id, latest.month, latest.year);
+      });
+    });
+  }, 400);
+};
